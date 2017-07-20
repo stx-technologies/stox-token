@@ -75,10 +75,10 @@ contract StoxSmartTokenSale is Ownable {
         // Since only 50% of the tokens will be sold, we will automatically transfer the remainder to the Stox
         // recipient.
         issueTokens(_recipient, tokens);
-        issueTokens(_stoxRecipient, tokens);
+        issueTokens(stoxRecipient, tokens);
 
         // Transfer the funds to the funding recipient.
-        fundingRecipient.transfer(contribution);
+        fundingRecipient.transfer(msg.value);
     }
 
     /// @dev Issues tokens for the recipient.
