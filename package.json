@@ -15,5 +15,8 @@
     "bignumber.js": "^4.0.2",
     "ethereumjs-testrpc": "^4.0.1",
     "truffle": "^3.4.5"
+  },
+  "scripts": {
+    "test": "./testrpc.sh > /dev/null & sleep 3 && ./node_modules/.bin/truffle test"
   }
 }
