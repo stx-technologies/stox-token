@@ -10,4 +10,8 @@ contract StoxSmartTokenSaleMock is StoxSmartTokenSale {
     function setTokensSold(uint256 _tokensSold) {
         tokensSold = _tokensSold;
     }
+
+    function setFinalized(bool state) {
+        isFinalized = state;
+    }
 }
