@@ -70,7 +70,7 @@ contract('StoxSmartTokenSale', (accounts) => {
 
         it('should be initialized as not finalized', async () => {
             let sale = await StoxSmartTokenSaleMock.new(fundRecipient, stoxRecipient, blockNumber + 100, blockNumber + 1000);
-            assert.equal((await sale.isFinalized()), false);
+            assert.equal(await sale.isFinalized(), false);
         });
 
         it('should be ownable', async () => {
