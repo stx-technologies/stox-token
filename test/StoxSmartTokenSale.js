@@ -64,11 +64,6 @@ contract('StoxSmartTokenSale', (accounts) => {
             assert.equal((await sale.tokensSold()), 0);
         });
 
-        it('should be initialized with 0 total raised ETH', async () => {
-            let sale = await StoxSmartTokenSale.new(fundRecipient, stoxRecipient, blockNumber + 100, blockNumber + 1000);
-            assert.equal((await sale.ethRaised()), 0);
-        });
-
         it('should be ownable', async () => {
             let sale = await StoxSmartTokenSale.new(fundRecipient, stoxRecipient, blockNumber + 100, blockNumber + 100000);
             assert.equal(await sale.owner(), accounts[0]);
