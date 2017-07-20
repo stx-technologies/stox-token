@@ -1,11 +1,11 @@
 import expectThrow from './helpers/expectThrow';
-const SafeMathMock = artifacts.require('./helpers/SafeMathMock.sol');
+const SaferMathMock = artifacts.require('./helpers/SaferMathMock.sol');
 
-contract('SafeMath', (accounts) => {
-    let safeMath;
+contract('SaferMath', (accounts) => {
+    let saferMath;
 
     beforeEach(async () => {
-        safeMath = await SafeMathMock.new();
+        saferMath = await SaferMathMock.new();
     });
 
     describe('mul', async () => {
@@ -17,8 +17,8 @@ contract('SafeMath', (accounts) => {
             it(`multiplies ${pair[0]} and ${pair[1]} correctly`, async () => {
                 let a = pair[0];
                 let b = pair[1];
-                await safeMath.multiply(a, b);
-                let result = await safeMath.result();
+                await saferMath.multiply(a, b);
+                let result = await saferMath.result();
                 assert.equal(result, a * b);
             });
         });
@@ -27,7 +27,7 @@ contract('SafeMath', (accounts) => {
             let a = 115792089237316195423570985008687907853269984665640564039457584007913129639933;
             let b = 2;
 
-            await expectThrow(safeMath.multiply(a, b));
+            await expectThrow(saferMath.multiply(a, b));
         });
     });
 
@@ -40,8 +40,8 @@ contract('SafeMath', (accounts) => {
             it(`adds ${pair[0]} and ${pair[1]} correctly`, async () => {
                 let a = pair[0];
                 let b = pair[1];
-                await safeMath.add(a, b);
-                let result = await safeMath.result();
+                await saferMath.add(a, b);
+                let result = await saferMath.result();
 
                 assert.equal(result, a + b);
             });
@@ -51,7 +51,7 @@ contract('SafeMath', (accounts) => {
             let a = 115792089237316195423570985008687907853269984665640564039457584007913129639935;
             let b = 1;
 
-            await expectThrow(safeMath.add(a, b));
+            await expectThrow(saferMath.add(a, b));
         });
     });
 
@@ -64,8 +64,8 @@ contract('SafeMath', (accounts) => {
             it(`subtracts ${pair[0]} and ${pair[1]} correctly`, async () => {
                 let a = pair[0];
                 let b = pair[1];
-                await safeMath.subtract(a, b);
-                let result = await safeMath.result();
+                await saferMath.subtract(a, b);
+                let result = await saferMath.result();
 
                 assert.equal(result, a - b);
             });
@@ -75,7 +75,7 @@ contract('SafeMath', (accounts) => {
             let a = 1234;
             let b = 5678;
 
-            await expectThrow(safeMath.subtract(a, b));
+            await expectThrow(saferMath.subtract(a, b));
         });
     });
 
@@ -88,8 +88,8 @@ contract('SafeMath', (accounts) => {
             it(`divides ${pair[0]} and ${pair[1]} correctly`, async () => {
                 let a = pair[0];
                 let b = pair[1];
-                await safeMath.divide(a, b);
-                let result = await safeMath.result();
+                await saferMath.divide(a, b);
+                let result = await saferMath.result();
 
                 assert.equal(result, Math.floor(a / b));
             });
@@ -99,7 +99,7 @@ contract('SafeMath', (accounts) => {
             let a = 100;
             let b = 0;
 
-            await expectThrow(safeMath.divide(a, b));
+            await expectThrow(saferMath.divide(a, b));
         });
     });
 
@@ -112,8 +112,8 @@ contract('SafeMath', (accounts) => {
             it(`get the max64 of ${pair[0]} and ${pair[1]} correctly`, async () => {
                 let a = pair[0];
                 let b = pair[1];
-                await safeMath.max64(a, b);
-                let result = await safeMath.result();
+                await saferMath.max64(a, b);
+                let result = await saferMath.result();
 
                 assert.equal(result, Math.max(a, b));
             });
@@ -129,8 +129,8 @@ contract('SafeMath', (accounts) => {
             it(`get the min64 of ${pair[0]} and ${pair[1]} correctly`, async () => {
                 let a = pair[0];
                 let b = pair[1];
-                await safeMath.min64(a, b);
-                let result = await safeMath.result();
+                await saferMath.min64(a, b);
+                let result = await saferMath.result();
 
                 assert.equal(result, Math.min(a, b));
             });
@@ -146,8 +146,8 @@ contract('SafeMath', (accounts) => {
             it(`get the max256 of ${pair[0]} and ${pair[1]} correctly`, async () => {
                 let a = pair[0];
                 let b = pair[1];
-                await safeMath.max256(a, b);
-                let result = await safeMath.result();
+                await saferMath.max256(a, b);
+                let result = await saferMath.result();
 
                 assert.equal(result, Math.max(a, b));
             });
@@ -163,8 +163,8 @@ contract('SafeMath', (accounts) => {
             it(`get the min256 of ${pair[0]} and ${pair[1]} correctly`, async () => {
                 let a = pair[0];
                 let b = pair[1];
-                await safeMath.min256(a, b);
-                let result = await safeMath.result();
+                await saferMath.min256(a, b);
+                let result = await saferMath.result();
 
                 assert.equal(result, Math.min(a, b));
             });
