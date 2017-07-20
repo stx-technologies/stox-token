@@ -8,6 +8,8 @@ import './StoxSmartToken.sol';
 contract StoxSmartTokenSale is Ownable {
     using SaferMath for uint256;
 
+    bool public isFinalized = false;
+
     // The address of the STX ERC20 token.
     StoxSmartToken public stox;
 
@@ -61,6 +63,15 @@ contract StoxSmartTokenSale is Ownable {
         stoxRecipient = _stoxRecipient;
         startBlock = _startBlock;
         endBlock = _endBlock;
+    }
+
+    /// @dev Finalizes the token sale event.
+    function finalize() external onlyAfterSale {
+        if (isFinalized) {
+            throw;
+        }
+
+        isFinalized = true;
     }
 
     /// @dev Create and sell tokens to the caller.
