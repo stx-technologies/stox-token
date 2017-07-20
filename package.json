@@ -1,0 +1,19 @@
+{
+  "name": "stox-token",
+  "version": "1.0.0",
+  "repository": "git@github.com:stx-technologies/stox-token.git",
+  "license": "MIT",
+  "dependencies": {
+    "truffle-hdwallet-provider": "0.0.3"
+  },
+  "devDependencies": {
+    "babel-polyfill": "^6.23.0",
+    "babel-preset-es2015": "^6.24.1",
+    "babel-preset-stage-2": "^6.24.1",
+    "babel-preset-stage-3": "^6.24.1",
+    "babel-register": "^6.24.1",
+    "bignumber.js": "^4.0.2",
+    "ethereumjs-testrpc": "^4.0.1",
+    "truffle": "^3.4.5"
+  }
+}
