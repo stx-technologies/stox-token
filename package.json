@@ -18,7 +18,7 @@
     "truffle": "^3.4.5"
   },
   "scripts": {
-    "testrpc": "./testrpc.sh > /dev/null",
-    "test": "npm run testrpc & sleep 5 && truffle test"
+    "testrpc": "./testrpc.sh",
+    "test": "npm run testrpc > /dev/null & sleep 5 && truffle test"
   }
 }
