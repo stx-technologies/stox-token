@@ -59,6 +59,9 @@ contract StoxSmartTokenSale is Ownable {
         // Deploy new StoxSmartToken contract.
         stox = new StoxSmartToken();
 
+        // Disable transfers during the token sale.
+        stox.disableTransfers(true);
+
         fundingRecipient = _fundingRecipient;
         stoxRecipient = _stoxRecipient;
         startBlock = _startBlock;
@@ -70,6 +73,9 @@ contract StoxSmartTokenSale is Ownable {
         if (isFinalized) {
             throw;
         }
+
+        // Re-enable transfers after the token sale.
+        stox.disableTransfers(false);
 
         isFinalized = true;
     }

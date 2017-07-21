@@ -54,15 +54,6 @@ contract('StoxSmartTokenSale', (accounts) => {
             await expectThrow(StoxSmartTokenSaleMock.new(fundRecipient, stoxRecipient, blockNumber + 100, blockNumber - 1));
         });
 
-        it('should deploy the StoxSmartToken contract and own it', async () => {
-            let sale = await StoxSmartTokenSaleMock.new(fundRecipient, stoxRecipient, blockNumber + 100, blockNumber + 1000);
-            let tokenAddress = await sale.stox();
-            assert(tokenAddress != 0);
-
-            let token = StoxSmartToken.at(await sale.stox());
-            assert.equal(await token.owner(), sale.address);
-        });
-
         it('should be initialized with 0 total sold tokens', async () => {
             let sale = await StoxSmartTokenSaleMock.new(fundRecipient, stoxRecipient, blockNumber + 100, blockNumber + 1000);
             assert.equal((await sale.tokensSold()), 0);
@@ -76,6 +67,31 @@ contract('StoxSmartTokenSale', (accounts) => {
         it('should be ownable', async () => {
             let sale = await StoxSmartTokenSaleMock.new(fundRecipient, stoxRecipient, blockNumber + 100, blockNumber + 100000);
             assert.equal(await sale.owner(), accounts[0]);
+        });
+
+        describe('token', async () => {
+            let sale;
+            let token;
+
+            beforeEach(async () => {
+                sale = await StoxSmartTokenSaleMock.new(fundRecipient, stoxRecipient, blockNumber + 100, blockNumber + 1000);
+                let tokenAddress = await sale.stox();
+                assert(tokenAddress != 0);
+
+                token = StoxSmartToken.at(tokenAddress);
+            });
+
+            it('should own the token', async () => {
+                assert.equal(await token.owner(), sale.address);
+            });
+
+            it('should initialize as not transferable', async () => {
+                assert.equal(await token.owner(), sale.address);
+            });
+
+            it('should be initialized as transferable', async () => {
+                assert.equal(await token.transfersEnabled(), false);
+            });
         });
     });
 
@@ -113,6 +129,14 @@ contract('StoxSmartTokenSale', (accounts) => {
                 await sale.finalize();
 
                 assert.equal(await sale.isFinalized(), true);
+            });
+
+            it('should re-enable the token transfers', async () => {
+                assert.equal(await token.transfersEnabled(), false);
+
+                await sale.finalize();
+
+                assert.equal(await token.transfersEnabled(), true);
             });
 
             it('should not allow to end a token sale when already ended', async () => {
@@ -307,18 +331,18 @@ contract('StoxSmartTokenSale', (accounts) => {
         });
     }
 
-    // Generate tests which check the "create" method.
-    generateTokenTests('using the create function', async (sale, value, from) => {
-        let account = from || accounts[0];
-        return sale.create(account, {value: value, from: account});
-    });
+    // // Generate tests which check the "create" method.
+    // generateTokenTests('using the create function', async (sale, value, from) => {
+    //     let account = from || accounts[0];
+    //     return sale.create(account, {value: value, from: account});
+    // });
 
-    // Generate tests which check the contract's fallback method.
-    generateTokenTests('using fallback function', async (sale, value, from) => {
-        if (from) {
-            return sale.sendTransaction({value: value, from: from});
-        }
+    // // Generate tests which check the contract's fallback method.
+    // generateTokenTests('using fallback function', async (sale, value, from) => {
+    //     if (from) {
+    //         return sale.sendTransaction({value: value, from: from});
+    //     }
 
-        return sale.send(value);
-    });
+    //     return sale.send(value);
+    // });
 });

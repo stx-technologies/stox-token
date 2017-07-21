@@ -26,5 +26,9 @@ contract('StoxSmartToken', (accounts) => {
         it('should return correct decimal points after construction', async () => {
             assert.equal(await token.decimals(), 18);
         });
+
+        it('should be initialized as transferable', async () => {
+            assert.equal(await token.transfersEnabled(), true);
+        });
     });
 });
