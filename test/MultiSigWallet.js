@@ -5,6 +5,7 @@ const MultiSigWallet = artifacts.require('../contracts/MultiSigWallet.sol');
 
 contract('MultiSigWallet', (accounts) => {
     const MAX_OWNER_COUNT = 50;
+    const DEFAULT_GAS_PRICE = 100000000000;
 
     describe('construction', async () => {
         context('error', async () => {
@@ -33,6 +34,12 @@ contract('MultiSigWallet', (accounts) => {
             let owners = [accounts[0], accounts[1], accounts[2]];
             let requirement = 2;
 
+            it('should be initialized with 0 balance', async () => {
+                let wallet = await MultiSigWallet.new(owners, requirement);
+
+                assert.equal(web3.eth.getBalance(wallet.address), 0);
+            });
+
             it('should initialize owners', async () => {
                 let wallet = await MultiSigWallet.new(owners, requirement);
 
@@ -60,6 +67,33 @@ contract('MultiSigWallet', (accounts) => {
 
                 assert.equal((await wallet.transactionCount()).toNumber(), 0);
             });
+        });
+    });
+
+    describe('fallback function', async () => {
+        let owners = [accounts[0], accounts[1], accounts[2]];
+        let requirement = 2;
+        let wallet;
+
+        beforeEach(async () => {
+            wallet = await MultiSigWallet.new(owners, requirement);
+        });
+
+        it('should receive ETH', async () => {
+            let sender = accounts[3];
+            let senderBalance = web3.eth.getBalance(sender);
+            let walletBalance = web3.eth.getBalance(wallet.address);
+            assert.equal(walletBalance, 0);
+
+            let value = 10000;
+            let transaction = await wallet.sendTransaction({from: sender, value: value});
+            let gasUsed = DEFAULT_GAS_PRICE * transaction.receipt.gasUsed;
+
+            let senderBalance2 = web3.eth.getBalance(sender);
+            assert.equal(senderBalance2.toNumber(), senderBalance.minus(value).minus(gasUsed).toNumber());
+
+            let walletBalance2 = web3.eth.getBalance(wallet.address);
+            assert.equal(walletBalance2.toNumber(), walletBalance.plus(value).toNumber());
         });
     });
 });
