@@ -95,5 +95,25 @@ contract('MultiSigWallet', (accounts) => {
             let walletBalance2 = web3.eth.getBalance(wallet.address);
             assert.equal(walletBalance2.toNumber(), walletBalance.plus(value).toNumber());
         });
+
+        it('should receive STX', async () => {
+            let token = await StoxSmartToken.new();
+
+            let value = 200;
+            token.issue(sender, value);
+
+            let senderBalance = await token.balanceOf(sender);
+            let walletBalance = await token.balanceOf(wallet.address);
+            assert.equal(senderBalance.toNumber(), value);
+            assert.equal(walletBalance.toNumber(), 0);
+
+            await token.transfer(wallet.address, value, {from: sender});
+
+            let senderBalance2 = await token.balanceOf(sender);
+            assert.equal(senderBalance2.toNumber(), senderBalance.minus(value).toNumber());
+
+            let walletBalance2 = await token.balanceOf(wallet.address);
+            assert.equal(walletBalance2.toNumber(), walletBalance.plus(value).toNumber());
+        });
     });
 });
