@@ -108,11 +108,11 @@ contract('StoxSmartTokenSale', (accounts) => {
 
         let testFinalization = async () => {
             it('should finalize the token sale', async () => {
-                assert.equal((await sale.isFinalized()), false);
+                assert.equal(await sale.isFinalized(), false);
 
                 await sale.finalize();
 
-                assert.equal((await sale.isFinalized()), true);
+                assert.equal(await sale.isFinalized(), true);
             });
 
             it('should not allow to end a token sale when already ended', async () => {
