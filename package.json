@@ -4,7 +4,7 @@
   "repository": "git@github.com:stx-technologies/stox-token.git",
   "license": "MIT",
   "dependencies": {
-    "bancor-contracts": "git+https://github.com/bancorprotocol/contracts.git#smart_token_v0.2",
+    "bancor-contracts": "^0.2.0",
     "truffle-hdwallet-provider": "0.0.3"
   },
   "devDependencies": {
