@@ -10,11 +10,6 @@ module.exports = {
             port: 8545,
             network_id: '*' // Match any network id
         },
-        docker: {
-            host: 'testrpc',
-            port: 8545,
-            network_id: '*'
-        },
         ropsten: {
             provider: provider,
             network_id: 3 // official id of the ropsten network
