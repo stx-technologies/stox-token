@@ -1,4 +1,5 @@
 import expectThrow from './helpers/expectThrow';
+import coder from 'web3/packages/web3-eth-abi/src/index.js';
 
 const StoxSmartToken = artifacts.require('../contracts/StoxSmartToken.sol');
 const MultiSigWalletMock = artifacts.require('./heplers/MultiSigWalletMock.sol');
@@ -6,6 +7,19 @@ const MultiSigWalletMock = artifacts.require('./heplers/MultiSigWalletMock.sol')
 contract('MultiSigWallet', (accounts) => {
     const MAX_OWNER_COUNT = 50;
     const DEFAULT_GAS_PRICE = 100000000000;
+
+    const ERC20_TRANSFER_ABI = {
+        name: 'transfer',
+        type: 'function',
+        inputs: [{
+            type: 'address',
+            name: 'to'
+        },
+        {
+            type: 'uint256',
+            name: 'value'
+        }]
+    };
 
     describe('construction', async () => {
         context('error', async () => {
@@ -131,8 +145,11 @@ contract('MultiSigWallet', (accounts) => {
         ].forEach((spec) => {
             context(`with ${spec.owners.length} owners and requirement of ${spec.requirement}`, async () => {
                 let wallet;
+                let token;
                 let initETHBalance = 10000;
+                let initSTXBalance = 12345678;
                 let value = 234;
+                let sender = spec.owners[0];
                 let notOwner = accounts[8];
                 let receiver = accounts[9];
 
@@ -140,97 +157,189 @@ contract('MultiSigWallet', (accounts) => {
                     wallet = await MultiSigWalletMock.new(spec.owners, spec.requirement);
                     await wallet.sendTransaction({value: initETHBalance});
                     assert.equal(web3.eth.getBalance(wallet.address).toNumber(), initETHBalance);
+
+                    token = await StoxSmartToken.new();
+
+                    token.issue(wallet.address, initSTXBalance);
+                    assert.equal((await token.balanceOf(wallet.address)).toNumber(), initSTXBalance);
                 });
 
-                it('should throw an error, if sent from not an owner', async () => {
-                    await expectThrow(wallet.submitTransaction(receiver, value, [], {from: notOwner}));
+                describe('submitTransaction', async() => {
+                    it('should throw an error, if sent from not an owner', async () => {
+                        await expectThrow(wallet.submitTransaction(receiver, value, [], {from: notOwner}));
+                    });
+
+                    it('should throw an error, if sent to a 0 address', async () => {
+                        await expectThrow(wallet.submitTransaction(null, value, [], {from: sender}));
+                    });
                 });
 
-                it('should throw an error, if sent to a 0 address', async () => {
-                    await expectThrow(wallet.submitTransaction(null, value, []));
-                });
-
-                it('should throw an error, if confirming the same transaction after submitting it', async () => {
-                    let sender = spec.owners[0];
-                    await wallet.submitTransaction(receiver, value, [], {from: sender});
-
-                    let transactionId = await wallet.transactionId();
-                    await expectThrow(wallet.confirmTransaction(transactionId));
-                });
-
-                if (spec.requirement > 1) {
-                    it('should throw an error, if confirming the same transaction twice', async () => {
-                        let sender = spec.owners[0];
+                describe('confirmTransaction', async() => {
+                    it('should throw an error, if confirming the same transaction after submitting it', async () => {
                         await wallet.submitTransaction(receiver, value, [], {from: sender});
 
                         let transactionId = await wallet.transactionId();
-                        let confirmer = spec.owners[1];
-
-                        await wallet.confirmTransaction(transactionId, {from: confirmer});
-
-                        await expectThrow(wallet.confirmTransaction(transactionId, {from: confirmer}));
+                        await expectThrow(wallet.confirmTransaction(transactionId, {from: sender}));
                     });
-                }
 
-                it('should throw an error, if confirming a non-existing transaction', async () => {
-                    await expectThrow(wallet.confirmTransaction(12345, {from: spec.owners[0]}));
+                    if (spec.requirement > 1) {
+                        it('should throw an error, if sent from not an owner', async () => {
+                            await wallet.submitTransaction(receiver, value, [], {from: sender});
+                            let transactionId = await wallet.transactionId();
+
+                            await expectThrow(wallet.confirmTransaction(transactionId, {from: notOwner}));
+                        });
+
+                        it('should throw an error, if confirming the same transaction twice', async () => {
+                            await wallet.submitTransaction(receiver, value, [], {from: sender});
+                            let transactionId = await wallet.transactionId();
+
+                            let confirmer = spec.owners[1];
+                            await wallet.confirmTransaction(transactionId, {from: confirmer});
+
+                            await expectThrow(wallet.confirmTransaction(transactionId, {from: confirmer}));
+                        });
+                    }
+
+                    it('should throw an error, if confirming a non-existing transaction', async () => {
+                        await expectThrow(wallet.confirmTransaction(12345, {from: spec.owners[0]}));
+                    });
                 });
 
-                it('should only send ETH when all confirmations were received', async () => {
-                    let transaction = await wallet.submitTransaction(receiver, value, [], {from: spec.owners[0]});
-                    let transactionId = await wallet.transactionId();
+                describe('revokeConfirmation', async () => {
+                    if (spec.requirement > 1) {
+                        it('should throw an error, if sent from not an owner', async () => {
+                            await wallet.submitTransaction(receiver, value, [], {from: sender});
+                            let transactionId = await wallet.transactionId();
 
-                    let confirmations = 1;
-
-                    for (let i = 1; i < spec.owners.length; i++) {
-                        let confirmer = spec.owners[i];
-
-                        let prevWalletBalanace = web3.eth.getBalance(wallet.address);
-                        let prevReceiverBalance = web3.eth.getBalance(receiver);
-
-                        // If this is not the final confirmation - don't expect any change.
-                        if (confirmations < spec.requirement) {
-                            assert.equal(await wallet.isConfirmed(transactionId), false);
-
+                            let confirmer = spec.owners[1];
                             await wallet.confirmTransaction(transactionId, {from: confirmer});
+
+                            await expectThrow(wallet.revokeConfirmation(transactionId, {from: notOwner}));
+                        });
+
+                        it('should throw an error, if asked to revoke a non-confirmed transaction', async () => {
+                            await wallet.submitTransaction(receiver, value, [], {from: sender});
+                            let transactionId = await wallet.transactionId();
+
+                            await expectThrow(wallet.revokeConfirmation(transactionId, {from: spec.owners[1]}));
+                        });
+                    }
+
+                    if (spec.requirement > 2) {
+                        it('should revoke a confirmation', async () => {
+                            await wallet.submitTransaction(receiver, value, [], {from: sender});
+                            let transactionId = await wallet.transactionId();
+
+                            let confirmer = spec.owners[1];
+                            await wallet.confirmTransaction(transactionId, {from: confirmer});
+                            assert.equal(await wallet.getConfirmationCount(transactionId), 2);
+
+                            await wallet.revokeConfirmation(transactionId, {from: confirmer});
+                            assert.equal(await wallet.getConfirmationCount(transactionId), 1);
+                        });
+                    }
+
+                    it('should throw an error, if asked to revoke an executed transaction', async () => {
+                        await wallet.submitTransaction(receiver, value, [], {from: sender});
+                        let transactionId = await wallet.transactionId();
+
+                        let confirmations = 1;
+                        for (let i = 1; i < spec.owners.length && confirmations < spec.requirement; i++) {
+                            await wallet.confirmTransaction(transactionId, {from: spec.owners[i]});
                             confirmations++;
+                        }
 
-                            // Should throw an error if trying to confirm the same transaction twice.
-                            await expectThrow(wallet.confirmTransaction(transactionId, {from: confirmer}));
+                        await expectThrow(wallet.revokeConfirmation(transactionId, {from: sender}));
+                    });
+                });
 
+                let getBalance = async (address, coin) => {
+                    switch (coin) {
+                        case 'ETH':
+                            return web3.eth.getBalance(address);
 
-                            let walletBalanace = web3.eth.getBalance(wallet.address);
-                            let receiverBalance = web3.eth.getBalance(receiver);
+                        case 'STX':
+                            return await token.balanceOf(address);
 
-                            if (confirmations == spec.requirement) {
+                        default:
+                            throw new Error(`Invalid type: ${type}!`);
+                    }
+                }
+
+                let submitTransaction = async (receiver, value, from, coin) => {
+                    switch (coin) {
+                        case 'ETH':
+                            return await wallet.submitTransaction(receiver, value, [], {from: from});
+
+                        case 'STX':
+                            let params = [receiver, value];
+                            let encoded = coder.encodeFunctionCall(ERC20_TRANSFER_ABI, params);
+
+                            return await wallet.submitTransaction(token.address, 0, encoded, {from: from});
+
+                        default:
+                            throw new Error(`Invalid type: ${type}!`);
+                    }
+                }
+
+                [
+                    'ETH',
+                    'STX'
+                ].forEach((coin) => {
+                    it(`should only send ${coin} when all confirmations were received`, async () => {
+                        let transaction = submitTransaction(receiver, value, spec.owners[0], coin);
+                        let transactionId = await wallet.transactionId();
+
+                        let confirmations = 1;
+
+                        for (let i = 1; i < spec.owners.length; i++) {
+                            let confirmer = spec.owners[i];
+
+                            let prevWalletBalanace = await getBalance(wallet.address, coin);
+                            let prevReceiverBalance = await getBalance(receiver, coin);
+
+                            // If this is not the final confirmation - don't expect any change.
+                            if (confirmations < spec.requirement) {
+                                assert.equal(await wallet.isConfirmed(transactionId), false);
+
+                                await wallet.confirmTransaction(transactionId, {from: confirmer});
+                                confirmations++;
+                                assert.equal((await wallet.getConfirmationCount(transactionId)).toNumber(),
+                                    confirmations);
+
+                                // Should throw an error if trying to confirm the same transaction twice.
+                                await expectThrow(wallet.confirmTransaction(transactionId, {from: confirmer}));
+
+                                let walletBalanace = await getBalance(wallet.address, coin);
+                                let receiverBalance = await getBalance(receiver, coin);
+
+                                if (confirmations == spec.requirement) {
+                                    assert.equal(await wallet.isConfirmed(transactionId), true);
+
+                                    assert.equal(walletBalanace.toNumber(), prevWalletBalanace.minus(value).toNumber());
+                                    assert.equal(receiverBalance.toNumber(), prevReceiverBalance.plus(value).toNumber());
+                                } else {
+                                    assert.equal(await wallet.isConfirmed(transactionId), false);
+
+                                    assert.equal(walletBalanace.toNumber(), prevWalletBalanace.toNumber());
+                                    assert.equal(receiverBalance.toNumber(), prevReceiverBalance.toNumber());
+                                }
+                            } else {
                                 assert.equal(await wallet.isConfirmed(transactionId), true);
 
-                                assert.equal(walletBalanace.toNumber(), prevWalletBalanace.minus(value).toNumber());
-                                assert.equal(receiverBalance.toNumber(), prevReceiverBalance.plus(value).toNumber());
-                            } else {
-                                assert.equal(await wallet.isConfirmed(transactionId), false);
+                                // Should throw an error if trying to confirm an already executed transaction.
+                                await expectThrow(wallet.confirmTransaction(transactionId, {from: confirmer}));
+
+                                let walletBalanace = await getBalance(wallet.address, coin);
+                                let receiverBalance = await getBalance(receiver, coin);
 
                                 assert.equal(walletBalanace.toNumber(), prevWalletBalanace.toNumber());
                                 assert.equal(receiverBalance.toNumber(), prevReceiverBalance.toNumber());
                             }
-                        } else {
-                            assert.equal(await wallet.isConfirmed(transactionId), true);
-
-                            // Should throw an error if trying to confirm an already executed transaction.
-                            await expectThrow(wallet.confirmTransaction(transactionId, {from: confirmer}));
-
-                            let walletBalanace = web3.eth.getBalance(wallet.address);
-                            let receiverBalance = web3.eth.getBalance(receiver);
-
-                            assert.equal(walletBalanace.toNumber(), prevWalletBalanace.toNumber());
-                            assert.equal(receiverBalance.toNumber(), prevReceiverBalance.toNumber());
                         }
-                    }
+                    });
                 });
-
-                // it('should only send STX when all confirmations were received', async () => {
-
-                // });
             });
         });
     });
