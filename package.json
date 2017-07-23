@@ -15,7 +15,10 @@
     "babel-register": "^6.24.1",
     "bignumber.js": "^4.0.2",
     "ethereumjs-testrpc": "^4.0.1",
-    "truffle": "^3.4.5"
+    "lerna": "^2.0.0",
+    "truffle": "^3.4.5",
+    "web3": "github:MichalZalecki/web3.js#04dffef5c24fd9aebfc3aa8224a4f9d38ca69d68",
+    "yargs": "^8.0.2"
   },
   "scripts": {
     "testrpc": "./testrpc.sh",
