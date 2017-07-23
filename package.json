@@ -19,6 +19,6 @@
   },
   "scripts": {
     "testrpc": "./testrpc.sh",
-    "test": "npm run testrpc > /dev/null & sleep 5 && truffle test"
+    "test": "./testrpc.sh > /dev/null & sleep 5 && truffle test"
   }
 }
