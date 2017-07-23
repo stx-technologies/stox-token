@@ -234,4 +234,16 @@ contract('MultiSigWallet', (accounts) => {
             });
         });
     });
+
+    describe.skip('addOwner', async () => {
+    });
+
+    describe.skip('removeOwner', async () => {
+    });
+
+    describe.skip('replaceOwner', async () => {
+    });
+
+    describe.skip('changeRequirement', async () => {
+    });
 });
