@@ -82,7 +82,7 @@ contract StoxSmartTokenSale is Ownable {
 
     /// @dev Create and sell tokens to the caller.
     /// @param _recipient address The address of the recipient.
-    function create(address _recipient) payable public onlyDuringSale {
+    function create(address _recipient) public payable onlyDuringSale {
         require(msg.value > 0);
 
         uint256 tokens = msg.value.mul(EXCHANGE_RATE);
@@ -108,7 +108,7 @@ contract StoxSmartTokenSale is Ownable {
     }
 
     /// @dev Fallback function that will delegate the request to create.
-    function () payable external onlyDuringSale {
+    function () external payable onlyDuringSale {
         create(msg.sender);
     }
 }
