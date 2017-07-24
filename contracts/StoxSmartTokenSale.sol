@@ -85,17 +85,26 @@ contract StoxSmartTokenSale is Ownable {
     function create(address _recipient) public payable onlyDuringSale {
         require(msg.value > 0);
 
-        uint256 tokens = msg.value.mul(EXCHANGE_RATE);
+        uint256 tokens = SaferMath.min256(msg.value.mul(EXCHANGE_RATE), TOKEN_SALE_CAP);
+        uint256 contribution = tokens.div(EXCHANGE_RATE);
 
+        // Update total sold tokens.
         tokensSold = tokensSold.add(tokens);
+
+        // Transfer the funds to the funding recipient.
+        fundingRecipient.transfer(contribution);
 
         // Since only 50% of the tokens will be sold, we will automatically transfer the remainder to the Stox
         // recipient.
         issueTokens(_recipient, tokens);
         issueTokens(stoxRecipient, tokens);
 
-        // Transfer the funds to the funding recipient.
-        fundingRecipient.transfer(msg.value);
+        // Refund the msg.sender, in the case that not all of its ETH was used. This can happen only when selling the
+        // last chunk of STX.
+        uint256 refund = msg.value.sub(contribution);
+        if (refund > 0) {
+            msg.sender.transfer(refund);
+        }
     }
 
     /// @dev Issues tokens for the recipient.

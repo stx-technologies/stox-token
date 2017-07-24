@@ -171,7 +171,8 @@ contract('StoxSmartTokenSale', (accounts) => {
 
         let i = 0;
         for (let t of transactions) {
-            let tokens = new BigNumber(t.value.toString()).mul(EXCHANGE_RATE);
+            let tokens = BigNumber.min(new BigNumber(t.value.toString()).mul(EXCHANGE_RATE), TOKEN_SALE_CAP);
+            let contribution = tokens.div(EXCHANGE_RATE).floor();
 
             console.log(`\t[${++i} / ${transactions.length}] expecting account ${t.from} to buy ` +
                 `${tokens.toNumber() / STX} STX for ${t.value / ETH} ETH`);
@@ -198,9 +199,9 @@ contract('StoxSmartTokenSale', (accounts) => {
             let tokensSold2 = await sale.tokensSold();
             assert.equal(tokensSold2.toNumber(), tokensSold.plus(tokens).toNumber());
 
-            assert.equal(fundRecipientETHBalance2.toNumber(), fundRecipientETHBalance.plus(t.value.toString()).toNumber());
+            assert.equal(fundRecipientETHBalance2.toNumber(), fundRecipientETHBalance.plus(contribution.toString()).toNumber());
             assert.equal(stoxRecipientSTXBalance2.toNumber(), stoxRecipientSTXBalance.plus(tokens).toNumber());
-            assert.equal(participantETHBalance2.toNumber(), participantETHBalance.minus(t.value.toString()).minus(gasUsed).toNumber());
+            assert.equal(participantETHBalance2.toNumber(), participantETHBalance.minus(contribution.toString()).minus(gasUsed).toNumber());
             assert.equal(participantSTXBalance2.toNumber(), participantSTXBalance.plus(tokens).toNumber());
         }
     };
@@ -315,7 +316,7 @@ contract('StoxSmartTokenSale', (accounts) => {
                         { from: accounts[3], value: TOKEN_SALE_CAP / STX / EXCHANGE_RATE / 4 * ETH }
                     ],
                     [
-                        { from: accounts[3], value: (TOKEN_SALE_CAP / STX / EXCHANGE_RATE * ETH) + 1000 }
+                        { from: accounts[3], value: (TOKEN_SALE_CAP / STX / EXCHANGE_RATE * ETH) + 3 * ETH }
                     ]
                 ].forEach((transactions) => {
                     context(`${JSON.stringify(transactions).slice(0, 200)}...`, async function() {
