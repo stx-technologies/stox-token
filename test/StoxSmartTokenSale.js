@@ -331,18 +331,18 @@ contract('StoxSmartTokenSale', (accounts) => {
         });
     }
 
-    // // Generate tests which check the "create" method.
-    // generateTokenTests('using the create function', async (sale, value, from) => {
-    //     let account = from || accounts[0];
-    //     return sale.create(account, {value: value, from: account});
-    // });
+    // Generate tests which check the "create" method.
+    generateTokenTests('using the create function', async (sale, value, from) => {
+        let account = from || accounts[0];
+        return sale.create(account, {value: value, from: account});
+    });
 
-    // // Generate tests which check the contract's fallback method.
-    // generateTokenTests('using fallback function', async (sale, value, from) => {
-    //     if (from) {
-    //         return sale.sendTransaction({value: value, from: from});
-    //     }
+    // Generate tests which check the contract's fallback method.
+    generateTokenTests('using fallback function', async (sale, value, from) => {
+        if (from) {
+            return sale.sendTransaction({value: value, from: from});
+        }
 
-    //     return sale.send(value);
-    // });
+        return sale.send(value);
+    });
 });
