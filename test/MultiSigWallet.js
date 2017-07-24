@@ -21,10 +21,53 @@ contract('MultiSigWallet', (accounts) => {
         }]
     };
 
+    const MULTISIGWALLET_ABI = {
+        addOwner: {
+            name: 'addOwner',
+            type: 'function',
+            inputs: [{
+                type: 'address',
+                name: 'owner'
+            }]
+        },
+        removeOwner: {
+            name: 'removeOwner',
+            type: 'function',
+            inputs: [{
+                type: 'address',
+                name: 'owner'
+            }]
+        },
+        replaceOwner: {
+            name: 'replaceOwner',
+            type: 'function',
+            inputs: [{
+                type: 'address',
+                name: 'owner'
+            }, {
+                type: 'address',
+                name: 'newOwner'
+            }]
+        },
+        changeRequirement: {
+            name: 'changeRequirement',
+            type: 'function',
+            inputs: [{
+                type: 'uint256',
+                name: 'required'
+            }]
+        }
+    };
+
     describe('construction', async () => {
         context('error', async () => {
             it(`should throw if created with more than ${MAX_OWNER_COUNT} owners`, async () => {
-                await expectThrow(MultiSigWalletMock.new(Array(MAX_OWNER_COUNT + 1).fill(accounts[2]), 2));
+                let owners = [];
+                for (let i = 0; i < MAX_OWNER_COUNT + 1; ++i) {
+                    owners.push(i + 1);
+                }
+
+                await expectThrow(MultiSigWalletMock.new(owners, 2));
             });
 
             it('should throw if created without any owners', async () => {
@@ -344,15 +387,252 @@ contract('MultiSigWallet', (accounts) => {
         });
     });
 
-    describe.skip('addOwner', async () => {
-    });
+    describe('internal methods', async () => {
+        let wallet;
 
-    describe.skip('removeOwner', async () => {
-    });
+        [
+            { owners: [accounts[1], accounts[2]], requirement: 1 },
+            { owners: [accounts[1], accounts[2]], requirement: 2 },
+            { owners: [accounts[1], accounts[2], accounts[3]], requirement: 2 },
+            { owners: [accounts[1], accounts[2], accounts[3]], requirement: 3 },
+            { owners: [accounts[1], accounts[2], accounts[3], accounts[4]], requirement: 1 },
+            { owners: [accounts[1], accounts[2], accounts[3], accounts[4]], requirement: 2 },
+            { owners: [accounts[1], accounts[2], accounts[3], accounts[4]], requirement: 3 },
+            { owners: [accounts[1], accounts[2], accounts[3], accounts[4]], requirement: 4 },
+            { owners: [accounts[1], accounts[2], accounts[3], accounts[4], accounts[5]], requirement: 3 }
+        ].forEach((spec) => {
+            context(`with ${spec.owners.length} owners and requirement of ${spec.requirement}`, async () => {
+                let wallet;
+                let notOwner = accounts[8];
+                let notOwner2 = accounts[9];
 
-    describe.skip('replaceOwner', async () => {
-    });
+                beforeEach(async () => {
+                    wallet = await MultiSigWalletMock.new(spec.owners, spec.requirement);
+                });
 
-    describe.skip('changeRequirement', async () => {
+                describe('addOwner', async () => {
+                    let addOwner = async (owner, from) => {
+                        let params = [owner];
+                        let encoded = coder.encodeFunctionCall(MULTISIGWALLET_ABI.addOwner, params);
+
+                        let transaction = await wallet.submitTransaction(wallet.address, 0, encoded, {from: from});
+                        let transactionId = await wallet.transactionId();
+
+                        let confirmations = 1;
+
+                        for (let i = 1; i < spec.owners.length; i++) {
+                            let confirmer = spec.owners[i];
+
+                            // If this is not the final confirmation - confirm.
+                            if (confirmations < spec.requirement) {
+                                transaction = await wallet.confirmTransaction(transactionId, {from: confirmer});
+                                confirmations++;
+                            }
+                        }
+
+                        for (let log of transaction.logs) {
+                            if (log.event === 'ExecutionFailure') {
+                                throw new Error('invalid opcode');
+                            }
+                        }
+                    };
+
+                    it('should throw an error, if called directly', async () => {
+                        await expectThrow(wallet.addOwner(notOwner, {from: spec.owners[0]}));
+                    });
+
+                    it('should throw an error, if called by not an owner', async () => {
+                        await expectThrow(addOwner(notOwner2, notOwner));
+                    });
+
+                    it('should throw an error, if adding an empty owner', async () => {
+                        await expectThrow(addOwner('0000000000000000000000000000000000000000', spec.owners[0]));
+                    });
+
+                    it('should throw an error, if adding an existing owner', async () => {
+                        await expectThrow(addOwner(spec.owners[1], spec.owners[0]));
+                    });
+
+                    it('should add an owner', async () => {
+                        assert.equal(await wallet.isOwner(notOwner), false);
+
+                        await addOwner(notOwner, spec.owners[0]);
+
+                        assert.equal(await wallet.isOwner(notOwner), true);
+                    });
+                });
+
+                describe('removeOwner', async () => {
+                    let removeOwner = async (owner, from) => {
+                        let params = [owner];
+                        let encoded = coder.encodeFunctionCall(MULTISIGWALLET_ABI.removeOwner, params);
+
+                        let transaction = await wallet.submitTransaction(wallet.address, 0, encoded, {from: from});
+                        let transactionId = await wallet.transactionId();
+
+                        let confirmations = 1;
+
+                        for (let i = 1; i < spec.owners.length; i++) {
+                            let confirmer = spec.owners[i];
+
+                            // If this is not the final confirmation - confirm.
+                            if (confirmations < spec.requirement) {
+                                transaction = await wallet.confirmTransaction(transactionId, {from: confirmer});
+                                confirmations++;
+                            }
+                        }
+
+                        for (let log of transaction.logs) {
+                            if (log.event === 'ExecutionFailure') {
+                                throw new Error('invalid opcode');
+                            }
+                        }
+                    };
+
+                    it('should throw an error, if called directly', async () => {
+                        await expectThrow(wallet.removeOwner(spec.owners[0], {from: spec.owners[0]}));
+                    });
+
+                    it('should throw an error, if called by not an owner', async () => {
+                        await expectThrow(removeOwner(spec.owners[0], notOwner));
+                    });
+
+                    it('should throw an error, if removing a non-existing owner', async () => {
+                        await expectThrow(removeOwner(notOwner, spec.owners[0]));
+                    });
+
+                    it('should remove an owner', async () => {
+                        let owner = spec.owners[1];
+                        let requirement = (await wallet.required()).toNumber();
+
+                        assert.equal(await wallet.isOwner(owner), true);
+
+                        await removeOwner(owner, spec.owners[0]);
+
+                        let newRequirement = (await wallet.required()).toNumber();
+                        if (spec.requirement > spec.owners.length - 1) {
+                            assert.equal(newRequirement, requirement - 1);
+                        } else {
+                            assert.equal(newRequirement, requirement);
+                        }
+
+                        assert.equal(await wallet.isOwner(owner), false);
+                    });
+                });
+
+                describe('replaceOwner', async () => {
+                    let replaceOwner = async (owner, newOwner, from) => {
+                        let params = [owner, newOwner];
+                        let encoded = coder.encodeFunctionCall(MULTISIGWALLET_ABI.replaceOwner, params);
+
+                        let transaction = await wallet.submitTransaction(wallet.address, 0, encoded, {from: from});
+                        let transactionId = await wallet.transactionId();
+
+                        let confirmations = 1;
+
+                        for (let i = 1; i < spec.owners.length; i++) {
+                            let confirmer = spec.owners[i];
+
+                            // If this is not the final confirmation - confirm.
+                            if (confirmations < spec.requirement) {
+                                transaction = await wallet.confirmTransaction(transactionId, {from: confirmer});
+                                confirmations++;
+                            }
+                        }
+
+                        for (let log of transaction.logs) {
+                            if (log.event === 'ExecutionFailure') {
+                                throw new Error('invalid opcode');
+                            }
+                        }
+                    };
+
+                    it('should throw an error, if called directly', async () => {
+                        await expectThrow(wallet.replaceOwner(spec.owners[0], spec.owners[1], {from: spec.owners[0]}));
+                    });
+
+                    it('should throw an error, if called by not an owner', async () => {
+                        await expectThrow(replaceOwner(spec.owners[0], spec.owners[1], notOwner));
+                    });
+
+                    it('should throw an error, if replacing a non-existing owner', async () => {
+                        await expectThrow(replaceOwner(notOwner, spec.owners[1], spec.owners[0]));
+                    });
+
+                    it('should replace an owner', async () => {
+                        let owner = spec.owners[1];
+                        let requirement = (await wallet.required()).toNumber();
+
+                        assert.equal(await wallet.isOwner(owner), true);
+                        assert.equal(await wallet.isOwner(notOwner), false);
+
+                        await replaceOwner(owner, notOwner, spec.owners[0]);
+
+                        assert.equal(await wallet.isOwner(owner), false);
+                        assert.equal(await wallet.isOwner(notOwner), true);
+                    });
+                });
+
+                describe('changeRequirement', async () => {
+                    let changeRequirement = async (requirement, from) => {
+                        let params = [requirement];
+                        let encoded = coder.encodeFunctionCall(MULTISIGWALLET_ABI.changeRequirement, params);
+
+                        let transaction = await wallet.submitTransaction(wallet.address, 0, encoded, {from: from});
+                        let transactionId = await wallet.transactionId();
+
+                        let confirmations = 1;
+
+                        for (let i = 1; i < spec.owners.length; i++) {
+                            let confirmer = spec.owners[i];
+
+                            // If this is not the final confirmation - confirm.
+                            if (confirmations < spec.requirement) {
+                                transaction = await wallet.confirmTransaction(transactionId, {from: confirmer});
+                                confirmations++;
+                            }
+                        }
+
+                        for (let log of transaction.logs) {
+                            if (log.event === 'ExecutionFailure') {
+                                throw new Error('invalid opcode');
+                            }
+                        }
+                    };
+
+                    it('should throw an error, if called directly', async () => {
+                        let requirement = spec.requirement == 1 ? 2 : spec.requirement - 1;
+                        await expectThrow(wallet.changeRequirement(requirement, {from: spec.owners[0]}));
+                    });
+
+                    it('should throw an error, if called by not an owner', async () => {
+                        let requirement = spec.requirement == 1 ? 2 : spec.requirement - 1;
+                        await expectThrow(changeRequirement(requirement, notOwner));
+                    });
+
+                    if (spec.requirement < spec.owners.length) {
+                        it('should increase requirement by 1', async () => {
+                            let requirement = (await wallet.required()).toNumber();
+                            assert.equal(requirement, spec.requirement);
+
+                            await changeRequirement(spec.requirement + 1, spec.owners[0]);
+
+                            requirement = (await wallet.required()).toNumber();
+                            assert.equal(requirement, spec.requirement + 1);
+                        });
+                    } else {
+                        it('should decrease requirement by 1', async () => {
+                            let requirement = (await wallet.required()).toNumber();
+                            assert.equal(requirement, spec.requirement);
+
+                            await changeRequirement(spec.requirement - 1, spec.owners[0]);
+
+                            requirement = (await wallet.required()).toNumber();
+                            assert.equal(requirement, spec.requirement - 1);
+                        });
+                    }
+                });
+            });
+        });
     });
 });
