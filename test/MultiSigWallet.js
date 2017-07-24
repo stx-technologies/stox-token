@@ -203,7 +203,7 @@ contract('MultiSigWallet', (accounts) => {
 
                     token = await StoxSmartToken.new();
 
-                    token.issue(wallet.address, initSTXBalance);
+                    await token.issue(wallet.address, initSTXBalance);
                     assert.equal((await token.balanceOf(wallet.address)).toNumber(), initSTXBalance);
                 });
 
