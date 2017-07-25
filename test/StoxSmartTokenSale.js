@@ -203,6 +203,13 @@ contract('StoxSmartTokenSale', (accounts) => {
             assert.equal(stoxRecipientSTXBalance2.toNumber(), stoxRecipientSTXBalance.plus(tokens).toNumber());
             assert.equal(participantETHBalance2.toNumber(), participantETHBalance.minus(contribution.toString()).minus(gasUsed).toNumber());
             assert.equal(participantSTXBalance2.toNumber(), participantSTXBalance.plus(tokens).toNumber());
+
+            // If the all of the tokens are sold - finalize.
+            if (totalTokensSold.equals(TOKEN_SALE_CAP)) {
+                console.log('\tFinalizing sale...');
+
+                await sale.finalize();
+            }
         }
     };
 
