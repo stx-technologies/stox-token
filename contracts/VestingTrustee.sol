@@ -39,12 +39,6 @@ contract VestingTrustee is Ownable {
         stox = _stox;
     }
 
-    /// @dev Gets the current STX balance of the vesting trustee.
-    /// @return An uint256 representing the amount owned by contract itself.
-    function balance() public constant returns (uint256 balance) {
-        return stox.balanceOf(address(this));
-    }
-
     /// @dev Grant tokens to a specified address.
     /// @param _to address The address to grant tokens to.
     /// @param _value uint256 The amount of tokens to be granted.
@@ -64,7 +58,7 @@ contract VestingTrustee is Ownable {
         require(_start <= _cliff && _cliff <= _end);
 
         // Check that this grant doesn't exceed the total amount of tokens currently available for vesting.
-        require(totalVesting.add(_value) <= balance());
+        require(totalVesting.add(_value) <= stox.balanceOf(address(this)));
 
         // Assign a new grant.
         grants[_to] = Grant({
