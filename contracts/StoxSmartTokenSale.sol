@@ -14,10 +14,10 @@ contract StoxSmartTokenSale is Ownable {
     // The address of the STX ERC20 token.
     StoxSmartToken public stox;
 
-    uint256 private startBlock;
-    uint256 private endBlock;
-    address private fundingRecipient;
-    address private stoxRecipient;
+    uint256 public startBlock;
+    uint256 public endBlock;
+    address public fundingRecipient;
+    address public stoxRecipient;
 
     uint256 public tokensSold = 0;
 
