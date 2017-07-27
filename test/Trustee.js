@@ -3,9 +3,9 @@ import time from './helpers/time';
 import assertHelper from './helpers/assert';
 
 const StoxSmartToken = artifacts.require('../contracts/StoxSmartToken.sol');
-const VestingTrustee = artifacts.require('../contracts/VestingTrustee.sol');
+const Trustee = artifacts.require('../contracts/Trustee.sol');
 
-contract('VestingTrustee', (accounts) => {
+contract('Trustee', (accounts) => {
     const MINUTE = 60;
     const HOUR = 60 * MINUTE;
     const DAY = 24 * 60;
@@ -21,7 +21,7 @@ contract('VestingTrustee', (accounts) => {
         now = web3.eth.getBlock(web3.eth.blockNumber).timestamp;
 
         token = await StoxSmartToken.new();
-        trustee = await VestingTrustee.new(token.address, {from: granter});
+        trustee = await Trustee.new(token.address, {from: granter});
     });
 
     let getGrant = async (address) => {
@@ -40,7 +40,7 @@ contract('VestingTrustee', (accounts) => {
 
     describe('construction', async () => {
         it('should be initialized with a valid address', async () => {
-            await expectThrow(VestingTrustee.new());
+            await expectThrow(Trustee.new());
         });
 
         it('should be ownable', async () => {
@@ -255,7 +255,7 @@ contract('VestingTrustee', (accounts) => {
                     for (let i = 0; i < grant.results.length; ++i) {
                         it(`should revoke the grant and refund tokens after ${i + 1} transactions`, async () => {
 
-                            trustee = await VestingTrustee.new(token.address, {from: granter});
+                            trustee = await Trustee.new(token.address, {from: granter});
                             await token.issue(trustee.address, grant.tokens);
                             await trustee.grant(holder, grant.tokens, now + grant.startOffset, now + grant.cliffOffset,
                                 now + grant.endOffset, true);

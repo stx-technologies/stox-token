@@ -5,7 +5,7 @@ import './Ownable.sol';
 import './StoxSmartToken.sol';
 
 /// @title Vesting trustee
-contract VestingTrustee is Ownable {
+contract Trustee is Ownable {
     using SaferMath for uint256;
 
     // The address of the STX ERC20 token.
@@ -33,7 +33,7 @@ contract VestingTrustee is Ownable {
 
     /// @dev Constructor that initializes the address of the StoxSmartToken contract.
     /// @param _stox StoxSmartToken The address of the previously deployed StoxSmartToken smart contract.
-    function VestingTrustee(StoxSmartToken _stox) {
+    function Trustee(StoxSmartToken _stox) {
         require(_stox != address(0));
 
         stox = _stox;

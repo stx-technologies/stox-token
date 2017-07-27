@@ -3,7 +3,7 @@ pragma solidity ^0.4.11;
 import './SaferMath.sol';
 import './Ownable.sol';
 import './StoxSmartToken.sol';
-import './VestingTrustee.sol';
+import './Trustee.sol';
 
 /// @title Stox Smart Token sale
 contract StoxSmartTokenSale is Ownable {
