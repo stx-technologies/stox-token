@@ -26,7 +26,7 @@ contract Ownable {
 
     /// @dev Proposes to transfer control of the contract to a newOwnerCandidate.
     /// @param _newOwnerCandidate address The address to transfer ownership to.
-    function requestOwnershipTransfer(address _newOwnerCandidate) onlyOwner {
+    function transferOwnership(address _newOwnerCandidate) onlyOwner {
         require(_newOwnerCandidate != address(0));
 
         newOwnerCandidate = _newOwnerCandidate;

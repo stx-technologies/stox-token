@@ -24,19 +24,19 @@ contract('Ownable', (accounts) => {
 
     describe('ownership transfer', async () => {
         it('should change newOwnerCandidate', async () => {
-            await ownable.requestOwnershipTransfer(newOwner);
+            await ownable.transferOwnership(newOwner);
 
             assert.equal(await ownable.newOwnerCandidate(), newOwner);
         });
 
         it('should not change owner without approving the new owner', async () => {
-            await ownable.requestOwnershipTransfer(newOwner);
+            await ownable.transferOwnership(newOwner);
 
             assert.equal(await ownable.owner(), owner);
         });
 
         it('should change owner after transfer and approval', async () => {
-            await ownable.requestOwnershipTransfer(newOwner);
+            await ownable.transferOwnership(newOwner);
             await ownable.acceptOwnership({from: newOwner});
 
             assert.equal(await ownable.owner(), newOwner);
@@ -46,18 +46,18 @@ contract('Ownable', (accounts) => {
         it('should prevent non-owners from transfering ownership', async () => {
             assert((await ownable.owner()) != stranger);
 
-            await expectThrow(ownable.requestOwnershipTransfer(newOwner, {from: stranger}));
+            await expectThrow(ownable.transferOwnership(newOwner, {from: stranger}));
         });
 
         it('should prevent transferring ownership to null or 0 address', async () => {
-            await expectThrow(ownable.requestOwnershipTransfer(null, {from: owner}));
-            await expectThrow(ownable.requestOwnershipTransfer(0, {from: owner}));
+            await expectThrow(ownable.transferOwnership(null, {from: owner}));
+            await expectThrow(ownable.transferOwnership(0, {from: owner}));
 
             assert.equal(owner, await ownable.owner());
         });
 
         it('should prevent strangers from accepting ownership', async () => {
-            await ownable.requestOwnershipTransfer(newOwner);
+            await ownable.transferOwnership(newOwner);
             assert.equal(await ownable.newOwnerCandidate(), newOwner);
 
             await ownable.acceptOwnership({from: stranger});

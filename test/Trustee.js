@@ -198,7 +198,7 @@ contract('Trustee', (accounts) => {
                 await trustee.grant(grantee, balance, now, now + MONTH, now + YEAR, true);
                 await expectThrow(trustee.revoke(grantee, {from: notOwner}));
 
-                await trustee.requestOwnershipTransfer(notOwner);
+                await trustee.transferOwnership(notOwner);
                 await trustee.acceptOwnership({from: notOwner});
                 assert.equal(await trustee.owner(), notOwner);
 
