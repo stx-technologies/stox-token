@@ -39,7 +39,7 @@ contract StoxSmartTokenSale is Ownable {
 
     /// @dev Throws if called before sale ends.
     modifier onlyAfterSale() {
-        if (tokensSold < TOKEN_SALE_CAP && block.number < endBlock) {
+        if (!(tokensSold >= TOKEN_SALE_CAP || block.number >= endBlock)) {
             throw;
         }
 
