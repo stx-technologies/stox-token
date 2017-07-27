@@ -171,7 +171,9 @@ contract('StoxSmartTokenSale', (accounts) => {
 
         let i = 0;
         for (let t of transactions) {
-            let tokens = BigNumber.min(new BigNumber(t.value.toString()).mul(EXCHANGE_RATE), TOKEN_SALE_CAP);
+            let tokens = BigNumber.min(new BigNumber(t.value.toString()).mul(EXCHANGE_RATE),
+                TOKEN_SALE_CAP.minus(totalTokensSold));
+
             let contribution = tokens.div(EXCHANGE_RATE).floor();
 
             console.log(`\t[${++i} / ${transactions.length}] expecting account ${t.from} to buy ` +
@@ -323,7 +325,11 @@ contract('StoxSmartTokenSale', (accounts) => {
                         { from: accounts[3], value: TOKEN_SALE_CAP / STX / EXCHANGE_RATE / 4 * ETH }
                     ],
                     [
-                        { from: accounts[3], value: (TOKEN_SALE_CAP / STX / EXCHANGE_RATE * ETH) + 3 * ETH }
+                        { from: accounts[3], value: (TOKEN_SALE_CAP / STX / EXCHANGE_RATE * ETH) + 300 * ETH }
+                    ],
+                    [
+                        { from: accounts[3], value: 10000 * ETH },
+                        { from: accounts[3], value: (TOKEN_SALE_CAP / STX / EXCHANGE_RATE * ETH) + 300 * ETH }
                     ]
                 ].forEach((transactions) => {
                     context(`${JSON.stringify(transactions).slice(0, 200)}...`, async function() {
