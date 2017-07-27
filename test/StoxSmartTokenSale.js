@@ -17,7 +17,19 @@ contract('StoxSmartTokenSale', (accounts) => {
 
     const ETH_PRICE_USD = 227;
     const EXCHANGE_RATE = 200; // 200 STX for ETH
-    const TOKEN_SALE_CAP = new BigNumber(30 * Math.pow(10, 6)).div(ETH_PRICE_USD).floor().mul(EXCHANGE_RATE).mul(STX);
+
+    const PARTNER_TOKENS = new BigNumber(5 * Math.pow(10, 6)).mul(STX); // TODO: use real amount.
+
+    const PARTNERS = [
+        {address: '0x0010230123012010312300102301230120103121', value: 1 * Math.pow(10, 6) * STX},
+        {address: '0x0010230123012010312300102301230120103122', value: 2 * Math.pow(10, 6) * STX},
+        {address: '0x0010230123012010312300102301230120103123', value: (2 * Math.pow(10, 6) - 50) * STX},
+        {address: '0x0010230123012010312300102301230120103124', value: 50 * STX}
+    ];
+
+    // $30M worth of STX (including PARTNER_TOKENS).
+    const TOKEN_SALE_CAP = new BigNumber(30 * Math.pow(10, 6)).div(ETH_PRICE_USD).floor().mul(EXCHANGE_RATE).mul(STX).
+        minus(PARTNER_TOKENS);
 
     let waitUntilBlockNumber = async (blockNumber) => {
         console.log(`Mining until block: ${blockNumber}. Please wait for a couple of moments...`);
@@ -54,9 +66,8 @@ contract('StoxSmartTokenSale', (accounts) => {
             await expectThrow(StoxSmartTokenSaleMock.new(fundRecipient, stoxRecipient, blockNumber + 100, blockNumber - 1));
         });
 
-        it('should be initialized with 0 total sold tokens', async () => {
-            let sale = await StoxSmartTokenSaleMock.new(fundRecipient, stoxRecipient, blockNumber + 100, blockNumber + 1000);
-            assert.equal((await sale.tokensSold()), 0);
+        it('should be initialized with a valid ending block', async () => {
+            await expectThrow(StoxSmartTokenSaleMock.new(fundRecipient, stoxRecipient, blockNumber + 100, blockNumber - 1));
         });
 
         it('should be initialized as not finalized', async () => {
@@ -91,6 +102,20 @@ contract('StoxSmartTokenSale', (accounts) => {
 
             it('should be initialized as transferable', async () => {
                 assert.equal(await token.transfersEnabled(), false);
+            });
+
+            it(`should distribute ${PARTNER_TOKENS / STX} STX to partners at creation`, async () => {
+                let totalPartnersSupply = 0;
+
+                for (let partner of PARTNERS) {
+                    assert.equal((await token.balanceOf(partner.address)).toNumber(), partner.value);
+
+                    totalPartnersSupply += partner.value;
+                }
+
+                assert.equal(totalPartnersSupply, PARTNER_TOKENS);
+                assert.equal((await token.totalSupply()).toNumber(), 2 * totalPartnersSupply);
+                assert.equal((await sale.tokensSold()).toNumber(), totalPartnersSupply);
             });
         });
     });
