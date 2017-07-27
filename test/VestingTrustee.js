@@ -483,7 +483,7 @@ contract('VestingTrustee', (accounts) => {
 
                         // Get previous state.
                         let totalVesting = (await trustee.totalVesting()).toNumber();
-                        let trusteeBalance = (await trustee.balance()).toNumber();
+                        let trusteeBalance = (await token.balanceOf(trustee.address)).toNumber();
                         let userBalance = (await token.balanceOf(holder)).toNumber();
                         let transferred = (await getGrant(holder)).transferred.toNumber();
 
@@ -493,7 +493,7 @@ contract('VestingTrustee', (accounts) => {
 
                         // Verify new state.
                         let totalVesting2 = (await trustee.totalVesting()).toNumber();
-                        let trusteeBalance2 = (await trustee.balance()).toNumber();
+                        let trusteeBalance2 = (await token.balanceOf(trustee.address)).toNumber();
                         let userBalance2 = (await token.balanceOf(holder)).toNumber();
                         let transferred2 = (await getGrant(holder)).transferred.toNumber();
 
