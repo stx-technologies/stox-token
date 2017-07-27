@@ -27,9 +27,8 @@ contract('StoxSmartTokenSale', (accounts) => {
         {address: '0x0010230123012010312300102301230120103124', value: 50 * STX}
     ];
 
-    // $30M worth of STX (including PARTNER_TOKENS).
-    const TOKEN_SALE_CAP = new BigNumber(30 * Math.pow(10, 6)).div(ETH_PRICE_USD).floor().mul(EXCHANGE_RATE).mul(STX).
-        minus(PARTNER_TOKENS);
+    // $30M worth of STX.
+    const TOKEN_SALE_CAP = new BigNumber(30 * Math.pow(10, 6)).div(ETH_PRICE_USD).floor().mul(EXCHANGE_RATE).mul(STX);
 
     let waitUntilBlockNumber = async (blockNumber) => {
         console.log(`Mining until block: ${blockNumber}. Please wait for a couple of moments...`);
@@ -192,7 +191,7 @@ contract('StoxSmartTokenSale', (accounts) => {
     let verifyTransactions = async (sale, fundRecipient, stoxRecipient, method, transactions) => {
         let token = StoxSmartToken.at(await sale.stox());
 
-        let totalTokensSold = new BigNumber(0);
+        let totalTokensSold = await sale.tokensSold();
 
         let i = 0;
         for (let t of transactions) {

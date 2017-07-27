@@ -26,8 +26,8 @@ contract StoxSmartTokenSale is Ownable {
     uint256 public constant EXCHANGE_RATE = 200; // 200 STX for ETH
     uint256 public constant PARTNER_TOKENS = 5 * 10 ** 6 * 10 ** 18; // TODO: use real amounts.
 
-    // $30M worth of STX (including PARTNER_TOKENS).
-    uint256 public constant TOKEN_SALE_CAP = (30 * 10 ** 6 / ETH_PRICE_USD) * EXCHANGE_RATE * 10 ** 18 - PARTNER_TOKENS;
+    // $30M worth of STX.
+    uint256 public constant TOKEN_SALE_CAP = (30 * 10 ** 6 / ETH_PRICE_USD) * EXCHANGE_RATE * 10 ** 18;
 
     event TokensIssued(address indexed _to, uint256 _tokens);
 
