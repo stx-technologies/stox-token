@@ -114,7 +114,6 @@ contract StoxSmartTokenSale is Ownable {
         stox.issue(0x0010230123012010312300102301230120103129, strategicPartnershipTokens.sub(PARTNER_BONUS));
 
         // Issue the remaining tokens as vesting grants:
-        uint256 vestingTokens = unsoldTokens.sub(strategicPartnershipTokens);
         stox.issue(trustee, unsoldTokens.sub(strategicPartnershipTokens));
 
         // 25% of the remaining tokens (== 12.5%) go to Invest.com, at uniform 12 months vesting schedule.
