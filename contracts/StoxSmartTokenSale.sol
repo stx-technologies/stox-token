@@ -106,9 +106,16 @@ contract StoxSmartTokenSale is Ownable {
         // trustee.
         uint256 unsoldTokens = tokensSold;
 
-        // PARTNER_BONUS tokens were already issued, alongside the sold tokens, so the actual grants should be
-        // unsoldTokens - PARTNER_BONUS.
-        stox.issue(trustee, unsoldTokens.sub(PARTNER_BONUS));
+        // Issue 55% of the remaining tokens (== 27.5%) go to strategic parternships.
+        uint256 strategicPartnershipTokens = unsoldTokens.mul(55).div(100);
+
+        // Note: we will substract the bonus tokens from this grant, since they were already issued for the pre-sale
+        // strategic partners and should've been taken from this allocation.
+        stox.issue(0x0010230123012010312300102301230120103129, strategicPartnershipTokens.sub(PARTNER_BONUS));
+
+        // Issue the remaining tokens as vesting grants:
+        uint256 vestingTokens = unsoldTokens.sub(strategicPartnershipTokens);
+        stox.issue(trustee, unsoldTokens.sub(strategicPartnershipTokens));
 
         // 25% of the remaining tokens (== 12.5%) go to Invest.com, at uniform 12 months vesting schedule.
         trustee.grant(0x0010230123012010312300102301230120103121, unsoldTokens.mul(25).div(100), now, now,
@@ -117,13 +124,6 @@ contract StoxSmartTokenSale is Ownable {
         // 20% of the remaining tokens (== 10%) go to Stox team, at uniform 24 months vesting schedule.
         trustee.grant(0x0010230123012010312300102301230120103122, unsoldTokens.mul(20).div(100), now, now,
             now.add(2 years), false);
-
-        // 55% of the remaining tokens (== 27.5%) go to strategic parternships, at uniform 12 months vesting schedule.
-        //
-        // Note: we will substract the bonus tokens from this grant, since they were already issued for the pre-sale
-        // strategic partners and should've been taken from this allocation.
-        trustee.grant(0x0010230123012010312300102301230120103123, unsoldTokens.mul(55).div(100).sub(PARTNER_BONUS), now,
-            now, now.add(1 years), false);
 
         // Re-enable transfers after the token sale.
         stox.disableTransfers(false);

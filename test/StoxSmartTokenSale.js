@@ -33,13 +33,15 @@ contract('StoxSmartTokenSale', (accounts) => {
 
     let VESTING_GRANTS = [
         {grantee: '0x0010230123012010312300102301230120103121', percent: 25, vesting: 1 * YEAR},
-        {grantee: '0x0010230123012010312300102301230120103122', percent: 20, vesting: 2 * YEAR},
-        {grantee: '0x0010230123012010312300102301230120103123', percent: 55, vesting: 1 * YEAR,
-            penalty: PARTNER_BONUS}
+        {grantee: '0x0010230123012010312300102301230120103122', percent: 20, vesting: 2 * YEAR}
     ];
 
+    let STRATEGIC_PARTNERSHIP_GRANT =
+        {address: '0x0010230123012010312300102301230120103129', percent: 55, penalty: PARTNER_BONUS};
+
     // $30M worth of STX.
-    const TOKEN_SALE_CAP = new BigNumber(30 * Math.pow(10, 6)).div(ETH_PRICE_USD).floor().mul(EXCHANGE_RATE).mul(STX);
+    const TOKEN_SALE_CAP = new BigNumber(30 * Math.pow(10, 6)).div(ETH_PRICE_USD).floor().mul(EXCHANGE_RATE).
+        mul(STX).minus(PARTNER_TOKENS);
 
     let waitUntilBlockNumber = async (blockNumber) => {
         console.log(`Mining until block: ${blockNumber}. Please wait for a couple of moments...`);
@@ -179,7 +181,7 @@ contract('StoxSmartTokenSale', (accounts) => {
                 await expectThrow(sale.finalize());
             });
 
-            describe('vesting', async () => {
+            describe('vesting and grants', async () => {
                 // We'd allow (up to) 100 seconds of time difference between the execution (i.e., mining) of the
                 // contract.
                 const MAX_TIME_ERROR = 100;
@@ -201,18 +203,20 @@ contract('StoxSmartTokenSale', (accounts) => {
                 }
 
                 beforeEach(async () => {
+                    let partnershipBalance = (await token.balanceOf(STRATEGIC_PARTNERSHIP_GRANT.address)).toNumber();
+                    assert.equal(partnershipBalance, 0);
+
                     await sale.finalize();
 
                     trustee = Trustee.at(await sale.trustee());
                 });
 
                 for (let grant of VESTING_GRANTS) {
-                    it(`should grant ${grant.grantee} ${grant.percent}% over ${grant.vesting} ` +
-                        `(penaly: ${(grant.penalty || 0) / STX})`, async () => {
+                    it(`should grant ${grant.grantee} ${grant.percent}% over ${grant.vesting}`, async () => {
                         let tokenGrant = await getGrant(grant.grantee);
 
                         let tokensSold = await sale.tokensSold();
-                        let granted = tokensSold.mul(grant.percent).div(100).floor().minus(grant.penalty || 0);
+                        let granted = tokensSold.mul(grant.percent).div(100).floor();
 
                         assert.equal(sale.address, tokenGrant.granter);
                         assert.equal(tokenGrant.value, granted.toNumber());
@@ -228,13 +232,25 @@ contract('StoxSmartTokenSale', (accounts) => {
                     let totalGranted = new BigNumber(0);
 
                     for (let grant of VESTING_GRANTS) {
-                        let granted = tokensSold.mul(grant.percent).div(100).floor().minus(grant.penalty || 0);
+                        let granted = tokensSold.mul(grant.percent).div(100).floor();
 
                         totalGranted = totalGranted.add(granted);
                     }
 
-                    assert.equal(totalGranted.toNumber(), tokensSold.minus(PARTNER_BONUS).toNumber());
+                    let partnerGrant = tokensSold.mul(STRATEGIC_PARTNERSHIP_GRANT.percent).div(100).floor();
+
                     assert.equal((await token.balanceOf(trustee.address)).toNumber(), totalGranted.toNumber());
+                    assert.equal(totalGranted.toNumber(), tokensSold.minus(partnerGrant).toNumber());
+                });
+
+                it('should grant strategic partnership grant', async () => {
+                    let tokensSold = await sale.tokensSold();
+
+                    let partnersActualGrant = tokensSold.mul(STRATEGIC_PARTNERSHIP_GRANT.percent).div(100).floor().
+                        minus(STRATEGIC_PARTNERSHIP_GRANT.penalty).toNumber();
+
+                    let partnershipBalance = (await token.balanceOf(STRATEGIC_PARTNERSHIP_GRANT.address)).toNumber();
+                    assert.equal(partnershipBalance, partnersActualGrant);
                 });
             });
         }
