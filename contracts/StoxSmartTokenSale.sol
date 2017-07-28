@@ -118,11 +118,11 @@ contract StoxSmartTokenSale is Ownable {
 
         // 25% of the remaining tokens (== 12.5%) go to Invest.com, at uniform 12 months vesting schedule.
         trustee.grant(0x0010230123012010312300102301230120103121, unsoldTokens.mul(25).div(100), now, now,
-            now.add(1 years), false);
+            now.add(1 years), true);
 
         // 20% of the remaining tokens (== 10%) go to Stox team, at uniform 24 months vesting schedule.
         trustee.grant(0x0010230123012010312300102301230120103122, unsoldTokens.mul(20).div(100), now, now,
-            now.add(2 years), false);
+            now.add(2 years), true);
 
         // Re-enable transfers after the token sale.
         stox.disableTransfers(false);
