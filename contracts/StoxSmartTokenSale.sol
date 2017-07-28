@@ -14,20 +14,23 @@ contract StoxSmartTokenSale is Ownable {
     // The address of the STX ERC20 token.
     StoxSmartToken public stox;
 
+    // The address of the token allocation trustee;
+    Trustee public trustee;
+
     uint256 public startBlock;
     uint256 public endBlock;
     address public fundingRecipient;
-    address public stoxRecipient;
 
     uint256 public tokensSold = 0;
 
     // TODO: update to the correct values.
     uint256 public constant ETH_PRICE_USD = 227;
     uint256 public constant EXCHANGE_RATE = 200; // 200 STX for ETH
-    uint256 public constant PARTNER_TOKENS = 5 * 10 ** 6 * 10 ** 18; // TODO: use real amounts.
+    uint256 public constant PARTNER_TOKENS = 4 * 10 ** 6 * 10 ** 18; // TODO: use real amounts.
+    uint256 public constant PARTNER_BONUS = 2 * 10 ** 6 * 10 ** 18; // TODO: use real amounts.
 
-    // $30M worth of STX.
-    uint256 public constant TOKEN_SALE_CAP = (30 * 10 ** 6 / ETH_PRICE_USD) * EXCHANGE_RATE * 10 ** 18;
+    // $30M worth of STX (including tokens which were granted to pre-sale strategic partners).
+    uint256 public constant TOKEN_SALE_CAP = (30 * 10 ** 6 / ETH_PRICE_USD) * EXCHANGE_RATE * 10 ** 18 - PARTNER_TOKENS;
 
     event TokensIssued(address indexed _to, uint256 _tokens);
 
@@ -51,12 +54,10 @@ contract StoxSmartTokenSale is Ownable {
 
     /// @dev Constructor that initializes the sale conditions.
     /// @param _fundingRecipient address The address of the funding recipient.
-    /// @param _stoxRecipient address The address of the funding STX recipient.
     /// @param _startBlock uint256 The block that the token sale should start at.
     /// @param _endBlock uint256 The block that the token sale should end at.
-    function StoxSmartTokenSale(address _fundingRecipient, address _stoxRecipient, uint256 _startBlock, uint256 _endBlock) {
+    function StoxSmartTokenSale(address _fundingRecipient, uint256 _startBlock, uint256 _endBlock) {
         require(_fundingRecipient != address(0));
-        require(_stoxRecipient != address(0));
         require(_startBlock > block.number);
         require(_endBlock > _startBlock);
 
@@ -67,7 +68,6 @@ contract StoxSmartTokenSale is Ownable {
         stox.disableTransfers(true);
 
         fundingRecipient = _fundingRecipient;
-        stoxRecipient = _stoxRecipient;
         startBlock = _startBlock;
         endBlock = _endBlock;
 
@@ -78,11 +78,17 @@ contract StoxSmartTokenSale is Ownable {
     function distributePartnerTokens() private onlyOwner {
         // TODO: add real partner addresses.
         issueTokens(0x0010230123012010312300102301230120103121, 1 * 10 ** 6 * 10 ** 18);
-        issueTokens(0x0010230123012010312300102301230120103122, 2 * 10 ** 6 * 10 ** 18);
+        issueTokens(0x0010230123012010312300102301230120103122, 1 * 10 ** 6 * 10 ** 18);
         issueTokens(0x0010230123012010312300102301230120103123, (2 * 10 ** 6 - 50) * 10 ** 18);
         issueTokens(0x0010230123012010312300102301230120103124, 50 * 10 ** 18);
+        issueTokens(0x0010230123012010312300102301230120103125, 2 * 10 ** 6 * 10 ** 18);
 
-        assert(stox.totalSupply() == PARTNER_TOKENS.mul(2));
+        // Don't count the bonus as part of the sale. PARTNER_BONUS of will be deducted from Stox' strategic partnership
+        // vesting grant below.
+        tokensSold = tokensSold.sub(PARTNER_BONUS);
+
+        assert(tokensSold == PARTNER_TOKENS);
+        assert(stox.totalSupply() == PARTNER_TOKENS.add(PARTNER_BONUS));
     }
 
     /// @dev Finalizes the token sale event.
@@ -90,6 +96,34 @@ contract StoxSmartTokenSale is Ownable {
         if (isFinalized) {
             throw;
         }
+
+        // Grant vesting grants.
+        //
+        // TODO: use real addresses.
+        trustee = new Trustee(stox);
+
+        // Since only 50% of the tokens will be sold, we will automatically issue the same amount of sold STX to the
+        // trustee.
+        uint256 unsoldTokens = tokensSold;
+
+        // PARTNER_BONUS tokens were already issued, alongside the sold tokens, so the actual grants should be
+        // unsoldTokens - PARTNER_BONUS.
+        stox.issue(trustee, unsoldTokens.sub(PARTNER_BONUS));
+
+        // 25% of the remaining tokens (== 12.5%) go to Invest.com, at uniform 12 months vesting schedule.
+        trustee.grant(0x0010230123012010312300102301230120103121, unsoldTokens.mul(25).div(100), now, now,
+            now.add(1 years), false);
+
+        // 20% of the remaining tokens (== 10%) go to Stox team, at uniform 24 months vesting schedule.
+        trustee.grant(0x0010230123012010312300102301230120103122, unsoldTokens.mul(20).div(100), now, now,
+            now.add(2 years), false);
+
+        // 55% of the remaining tokens (== 27.5%) go to strategic parternships, at uniform 12 months vesting schedule.
+        //
+        // Note: we will substract the bonus tokens from this grant, since they were already issued for the pre-sale
+        // strategic partners and should've been taken from this allocation.
+        trustee.grant(0x0010230123012010312300102301230120103123, unsoldTokens.mul(55).div(100).sub(PARTNER_BONUS), now,
+            now, now.add(1 years), false);
 
         // Re-enable transfers after the token sale.
         stox.disableTransfers(false);
@@ -125,10 +159,7 @@ contract StoxSmartTokenSale is Ownable {
         // Update total sold tokens.
         tokensSold = tokensSold.add(_tokens);
 
-        // Since only 50% of the tokens will be sold, we will automatically transfer the remainder to the Stox
-        // recipient.
         stox.issue(_recipient, _tokens);
-        stox.issue(stoxRecipient, _tokens);
 
         TokensIssued(_recipient, _tokens);
     }

@@ -1,9 +1,11 @@
 import BigNumber from 'bignumber.js';
 import expectThrow from './helpers/expectThrow';
 import time from './helpers/time';
+import assertHelper from './helpers/assert';
 
 const StoxSmartToken = artifacts.require('../contracts/StoxSmartToken.sol');
 const StoxSmartTokenSaleMock = artifacts.require('./helpers/StoxSmartTokenSaleMock.sol');
+const Trustee = artifacts.require('../contracts/Trustee.sol');
 
 contract('StoxSmartTokenSale', (accounts) => {
     const MINUTE = 60;
@@ -18,13 +20,22 @@ contract('StoxSmartTokenSale', (accounts) => {
     const ETH_PRICE_USD = 227;
     const EXCHANGE_RATE = 200; // 200 STX for ETH
 
-    const PARTNER_TOKENS = new BigNumber(5 * Math.pow(10, 6)).mul(STX); // TODO: use real amount.
+    const PARTNER_TOKENS = new BigNumber(4 * Math.pow(10, 6)).mul(STX); // TODO: use real amount.
+    const PARTNER_BONUS = new BigNumber(2 * Math.pow(10, 6)).mul(STX); // TODO: use real amount.
 
     const PARTNERS = [
         {address: '0x0010230123012010312300102301230120103121', value: 1 * Math.pow(10, 6) * STX},
-        {address: '0x0010230123012010312300102301230120103122', value: 2 * Math.pow(10, 6) * STX},
+        {address: '0x0010230123012010312300102301230120103122', value: 1 * Math.pow(10, 6) * STX},
         {address: '0x0010230123012010312300102301230120103123', value: (2 * Math.pow(10, 6) - 50) * STX},
-        {address: '0x0010230123012010312300102301230120103124', value: 50 * STX}
+        {address: '0x0010230123012010312300102301230120103124', value: 50 * STX},
+        {address: '0x0010230123012010312300102301230120103125', value: 2 * Math.pow(10, 6) * STX}
+    ];
+
+    let VESTING_GRANTS = [
+        {grantee: '0x0010230123012010312300102301230120103121', percent: 25, vesting: 1 * YEAR},
+        {grantee: '0x0010230123012010312300102301230120103122', percent: 20, vesting: 2 * YEAR},
+        {grantee: '0x0010230123012010312300102301230120103123', percent: 55, vesting: 1 * YEAR,
+            penalty: PARTNER_BONUS}
     ];
 
     // $30M worth of STX.
@@ -47,35 +58,35 @@ contract('StoxSmartTokenSale', (accounts) => {
 
     describe('construction', async () => {
         let fundRecipient = accounts[8];
-        let stoxRecipient = accounts[9];
 
         it('should be initialized with a valid funding recipient address', async () => {
-            await expectThrow(StoxSmartTokenSaleMock.new(null, stoxRecipient, 10, 100));
-        });
-
-        it('should be initialized with a valid stox recipient address', async () => {
-            await expectThrow(StoxSmartTokenSaleMock.new(fundRecipient, null, 10, 100));
+            await expectThrow(StoxSmartTokenSaleMock.new(null, 10, 100));
         });
 
         it('should be initialized with a future starting block', async () => {
-            await expectThrow(StoxSmartTokenSaleMock.new(fundRecipient, stoxRecipient, blockNumber - 1, blockNumber + 200));
+            await expectThrow(StoxSmartTokenSaleMock.new(fundRecipient, blockNumber - 1, blockNumber + 200));
         });
 
         it('should be initialized with a valid ending block', async () => {
-            await expectThrow(StoxSmartTokenSaleMock.new(fundRecipient, stoxRecipient, blockNumber + 100, blockNumber - 1));
+            await expectThrow(StoxSmartTokenSaleMock.new(fundRecipient, blockNumber + 100, blockNumber - 1));
         });
 
         it('should be initialized with a valid ending block', async () => {
-            await expectThrow(StoxSmartTokenSaleMock.new(fundRecipient, stoxRecipient, blockNumber + 100, blockNumber - 1));
+            await expectThrow(StoxSmartTokenSaleMock.new(fundRecipient, blockNumber + 100, blockNumber - 1));
         });
 
         it('should be initialized as not finalized', async () => {
-            let sale = await StoxSmartTokenSaleMock.new(fundRecipient, stoxRecipient, blockNumber + 100, blockNumber + 1000);
+            let sale = await StoxSmartTokenSaleMock.new(fundRecipient, blockNumber + 100, blockNumber + 1000);
             assert.equal(await sale.isFinalized(), false);
         });
 
+        it('should be initialized without a trustee', async () => {
+            let sale = await StoxSmartTokenSaleMock.new(fundRecipient, blockNumber + 100, blockNumber + 1000);
+            assert.equal(await sale.trustee(), 0);
+        });
+
         it('should be ownable', async () => {
-            let sale = await StoxSmartTokenSaleMock.new(fundRecipient, stoxRecipient, blockNumber + 100, blockNumber + 100000);
+            let sale = await StoxSmartTokenSaleMock.new(fundRecipient, blockNumber + 100, blockNumber + 100000);
             assert.equal(await sale.owner(), accounts[0]);
         });
 
@@ -84,7 +95,7 @@ contract('StoxSmartTokenSale', (accounts) => {
             let token;
 
             beforeEach(async () => {
-                sale = await StoxSmartTokenSaleMock.new(fundRecipient, stoxRecipient, blockNumber + 100, blockNumber + 1000);
+                sale = await StoxSmartTokenSaleMock.new(fundRecipient, blockNumber + 100, blockNumber + 1000);
                 let tokenAddress = await sale.stox();
                 assert(tokenAddress != 0);
 
@@ -112,9 +123,9 @@ contract('StoxSmartTokenSale', (accounts) => {
                     totalPartnersSupply += partner.value;
                 }
 
-                assert.equal(totalPartnersSupply, PARTNER_TOKENS);
-                assert.equal((await token.totalSupply()).toNumber(), 2 * totalPartnersSupply);
-                assert.equal((await sale.tokensSold()).toNumber(), totalPartnersSupply);
+                assert.equal(totalPartnersSupply, PARTNER_TOKENS.add(PARTNER_BONUS));
+                assert.equal((await token.totalSupply()).toNumber(), totalPartnersSupply);
+                assert.equal((await sale.tokensSold()).toNumber(), PARTNER_TOKENS);
             });
         });
     });
@@ -127,12 +138,11 @@ contract('StoxSmartTokenSale', (accounts) => {
         let end;
         let endTo = 20;
         let fundRecipient = accounts[8];
-        let stoxRecipient = accounts[9];
 
         beforeEach(async () => {
             start = blockNumber + startFrom;
             end = blockNumber + endTo;
-            sale = await StoxSmartTokenSaleMock.new(fundRecipient, stoxRecipient, start, end);
+            sale = await StoxSmartTokenSaleMock.new(fundRecipient, start, end);
             token = StoxSmartToken.at(await sale.stox());
         });
 
@@ -168,6 +178,65 @@ contract('StoxSmartTokenSale', (accounts) => {
 
                 await expectThrow(sale.finalize());
             });
+
+            describe('vesting', async () => {
+                // We'd allow (up to) 100 seconds of time difference between the execution (i.e., mining) of the
+                // contract.
+                const MAX_TIME_ERROR = 100;
+
+                let trustee;
+
+                let getGrant = async (address) => {
+                    let grant = await trustee.grants(address);
+
+                    return {
+                        granter: grant[0],
+                        value: grant[1].toNumber(),
+                        start: grant[2].toNumber(),
+                        cliff: grant[3].toNumber(),
+                        end: grant[4].toNumber(),
+                        transferred: grant[5].toNumber(),
+                        revokable: grant[6]
+                    };
+                }
+
+                beforeEach(async () => {
+                    await sale.finalize();
+
+                    trustee = Trustee.at(await sale.trustee());
+                });
+
+                for (let grant of VESTING_GRANTS) {
+                    it(`should grant ${grant.grantee} ${grant.percent}% over ${grant.vesting} ` +
+                        `(penaly: ${(grant.penalty || 0) / STX})`, async () => {
+                        let tokenGrant = await getGrant(grant.grantee);
+
+                        let tokensSold = await sale.tokensSold();
+                        let granted = tokensSold.mul(grant.percent).div(100).floor().minus(grant.penalty || 0);
+
+                        assert.equal(sale.address, tokenGrant.granter);
+                        assert.equal(tokenGrant.value, granted.toNumber());
+
+                        assertHelper.around(tokenGrant.start, now, MAX_TIME_ERROR);
+                        assertHelper.around(tokenGrant.cliff, now, MAX_TIME_ERROR);
+                        assertHelper.around(tokenGrant.end, now + grant.vesting, MAX_TIME_ERROR);
+                    });
+                }
+
+                it('should grant the trustee enough tokens to support the grants', async () => {
+                    let tokensSold = await sale.tokensSold();
+                    let totalGranted = new BigNumber(0);
+
+                    for (let grant of VESTING_GRANTS) {
+                        let granted = tokensSold.mul(grant.percent).div(100).floor().minus(grant.penalty || 0);
+
+                        totalGranted = totalGranted.add(granted);
+                    }
+
+                    assert.equal(totalGranted.toNumber(), tokensSold.minus(PARTNER_BONUS).toNumber());
+                    assert.equal((await token.balanceOf(trustee.address)).toNumber(), totalGranted.toNumber());
+                });
+            });
         }
 
         context('after the ending time', async() => {
@@ -176,7 +245,21 @@ contract('StoxSmartTokenSale', (accounts) => {
                 assert(web3.eth.blockNumber > end);
             });
 
-            testFinalization();
+            context('sold all of the tokens', async() => {
+                beforeEach(async () => {
+                    await sale.setTokensSold(TOKEN_SALE_CAP.toNumber());
+                });
+
+                testFinalization();
+            });
+
+            context('sold only half of the tokens', async() => {
+                beforeEach(async () => {
+                    await sale.setTokensSold(TOKEN_SALE_CAP.div(2).toNumber());
+                });
+
+                testFinalization();
+            });
         });
 
         context('reached token cap', async () => {
@@ -188,7 +271,7 @@ contract('StoxSmartTokenSale', (accounts) => {
         });
     });
 
-    let verifyTransactions = async (sale, fundRecipient, stoxRecipient, method, transactions) => {
+    let verifyTransactions = async (sale, fundRecipient, method, transactions) => {
         let token = StoxSmartToken.at(await sale.stox());
 
         let totalTokensSold = await sale.tokensSold();
@@ -204,7 +287,6 @@ contract('StoxSmartTokenSale', (accounts) => {
                 `${tokens.toNumber() / STX} STX for ${t.value / ETH} ETH`);
 
             let fundRecipientETHBalance = web3.eth.getBalance(fundRecipient);
-            let stoxRecipientSTXBalance = await token.balanceOf(stoxRecipient);
             let participantETHBalance = web3.eth.getBalance(t.from);
             let participantSTXBalance = await token.balanceOf(t.from);
 
@@ -216,7 +298,6 @@ contract('StoxSmartTokenSale', (accounts) => {
             let gasUsed = DEFAULT_GAS_PRICE * transaction.receipt.gasUsed;
 
             let fundRecipientETHBalance2 = web3.eth.getBalance(fundRecipient);
-            let stoxRecipientSTXBalance2 = await token.balanceOf(stoxRecipient);
             let participantETHBalance2 = web3.eth.getBalance(t.from);
             let participantSTXBalance2 = await token.balanceOf(t.from);
 
@@ -226,7 +307,6 @@ contract('StoxSmartTokenSale', (accounts) => {
             assert.equal(tokensSold2.toNumber(), tokensSold.plus(tokens).toNumber());
 
             assert.equal(fundRecipientETHBalance2.toNumber(), fundRecipientETHBalance.plus(contribution.toString()).toNumber());
-            assert.equal(stoxRecipientSTXBalance2.toNumber(), stoxRecipientSTXBalance.plus(tokens).toNumber());
             assert.equal(participantETHBalance2.toNumber(), participantETHBalance.minus(contribution.toString()).minus(gasUsed).toNumber());
             assert.equal(participantSTXBalance2.toNumber(), participantSTXBalance.plus(tokens).toNumber());
 
@@ -244,7 +324,6 @@ contract('StoxSmartTokenSale', (accounts) => {
             let sale;
             let token;
             let fundRecipient = accounts[8];
-            let stoxRecipient = accounts[9];
             let start;
             let startFrom = 10;
             let end;
@@ -254,7 +333,7 @@ contract('StoxSmartTokenSale', (accounts) => {
             beforeEach(async () => {
                 start = blockNumber + startFrom;
                 end = blockNumber + endTo;
-                sale = await StoxSmartTokenSaleMock.new(fundRecipient, stoxRecipient, start, end);
+                sale = await StoxSmartTokenSaleMock.new(fundRecipient, start, end);
                 token = StoxSmartToken.at(await sale.stox());
             });
 
@@ -361,7 +440,7 @@ contract('StoxSmartTokenSale', (accounts) => {
                         this.timeout(0);
 
                         it('should execute sale orders', async () => {
-                            await verifyTransactions(sale, fundRecipient, stoxRecipient, method, transactions);
+                            await verifyTransactions(sale, fundRecipient, method, transactions);
                         });
                     });
                 });
