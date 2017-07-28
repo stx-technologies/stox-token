@@ -192,13 +192,12 @@ contract('StoxSmartTokenSale', (accounts) => {
                     let grant = await trustee.grants(address);
 
                     return {
-                        granter: grant[0],
-                        value: grant[1].toNumber(),
-                        start: grant[2].toNumber(),
-                        cliff: grant[3].toNumber(),
-                        end: grant[4].toNumber(),
-                        transferred: grant[5].toNumber(),
-                        revokable: grant[6]
+                        value: grant[0].toNumber(),
+                        start: grant[1].toNumber(),
+                        cliff: grant[2].toNumber(),
+                        end: grant[3].toNumber(),
+                        transferred: grant[4].toNumber(),
+                        revokable: grant[5]
                     };
                 }
 
@@ -218,7 +217,6 @@ contract('StoxSmartTokenSale', (accounts) => {
                         let tokensSold = await sale.tokensSold();
                         let granted = tokensSold.mul(grant.percent).div(100).floor();
 
-                        assert.equal(sale.address, tokenGrant.granter);
                         assert.equal(tokenGrant.value, granted.toNumber());
 
                         assertHelper.around(tokenGrant.start, now, MAX_TIME_ERROR);
