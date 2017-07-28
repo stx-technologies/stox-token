@@ -5,14 +5,13 @@ import './Ownable.sol';
 import './StoxSmartToken.sol';
 
 /// @title Vesting trustee
-contract VestingTrustee is Ownable {
+contract Trustee is Ownable {
     using SaferMath for uint256;
 
     // The address of the STX ERC20 token.
     StoxSmartToken public stox;
 
     struct Grant {
-        address granter;
         uint256 value;
         uint256 start;
         uint256 cliff;
@@ -28,21 +27,15 @@ contract VestingTrustee is Ownable {
     uint256 public totalVesting;
 
     event NewGrant(address indexed _from, address indexed _to, uint256 _value);
-    event UnlockGrant(address indexed _holder, address _granter, uint256 _value);
-    event RevokeGrant(address indexed _holder, address _granter, uint256 _refund);
+    event UnlockGrant(address indexed _holder, uint256 _value);
+    event RevokeGrant(address indexed _holder, uint256 _refund);
 
     /// @dev Constructor that initializes the address of the StoxSmartToken contract.
     /// @param _stox StoxSmartToken The address of the previously deployed StoxSmartToken smart contract.
-    function VestingTrustee(StoxSmartToken _stox) {
+    function Trustee(StoxSmartToken _stox) {
         require(_stox != address(0));
 
         stox = _stox;
-    }
-
-    /// @dev Gets the current STX balance of the vesting trustee.
-    /// @return An uint256 representing the amount owned by contract itself.
-    function balance() public constant returns (uint256 balance) {
-        return stox.balanceOf(address(this));
     }
 
     /// @dev Grant tokens to a specified address.
@@ -58,17 +51,16 @@ contract VestingTrustee is Ownable {
         require(_value > 0);
 
         // Make sure that a single address can be granted tokens only once.
-        require(grants[_to].granter == 0);
+        require(grants[_to].value == 0);
 
         // Check for date inconsistencies that may cause unexpected behavior.
         require(_start <= _cliff && _cliff <= _end);
 
         // Check that this grant doesn't exceed the total amount of tokens currently available for vesting.
-        require(totalVesting.add(_value) <= balance());
+        require(totalVesting.add(_value) <= stox.balanceOf(address(this)));
 
         // Assign a new grant.
         grants[_to] = Grant({
-            granter: msg.sender,
             value: _value,
             start: _start,
             cliff: _cliff,
@@ -85,15 +77,12 @@ contract VestingTrustee is Ownable {
 
     /// @dev Revoke the grant of tokens of a specifed address.
     /// @param _holder The address which will have its tokens revoked.
-    function revoke(address _holder) public {
+    function revoke(address _holder) public onlyOwner {
         Grant grant = grants[_holder];
 
         require(grant.revokable);
 
-        // Make sure that only the granter can revoke the grant.
-        require(grant.granter == msg.sender);
-
-        // Send the remaining STX back to the granter.
+        // Send the remaining STX back to the owner.
         uint256 refund = grant.value.sub(grant.transferred);
 
         // Remove the grant.
@@ -102,7 +91,7 @@ contract VestingTrustee is Ownable {
         totalVesting = totalVesting.sub(refund);
         stox.transfer(msg.sender, refund);
 
-        RevokeGrant(_holder, msg.sender, refund);
+        RevokeGrant(_holder, refund);
     }
 
     /// @dev Calculate the total amount of vested tokens of a holder at a given time.
@@ -111,7 +100,7 @@ contract VestingTrustee is Ownable {
     /// @return a uint256 representing a holder's total amount of vested tokens.
     function vestedTokens(address _holder, uint256 _time) public constant returns (uint256) {
         Grant grant = grants[_holder];
-        if (grant.granter == 0) {
+        if (grant.value == 0) {
             return 0;
         }
 
@@ -155,7 +144,7 @@ contract VestingTrustee is Ownable {
     /// @return a uint256 representing the amount of vested tokens transferred to their holder.
     function unlockVestedTokens() public {
         Grant grant = grants[msg.sender];
-        require(grant.granter != 0);
+        require(grant.value != 0);
 
         // Get the total amount of vested tokens, acccording to grant.
         uint256 vested = calculateVestedTokens(grant, now);
@@ -173,6 +162,6 @@ contract VestingTrustee is Ownable {
         totalVesting = totalVesting.sub(transferable);
         stox.transfer(msg.sender, transferable);
 
-        UnlockGrant(msg.sender, grant.granter, transferable);
+        UnlockGrant(msg.sender, transferable);
     }
 }

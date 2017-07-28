@@ -3,9 +3,9 @@ import time from './helpers/time';
 import assertHelper from './helpers/assert';
 
 const StoxSmartToken = artifacts.require('../contracts/StoxSmartToken.sol');
-const VestingTrustee = artifacts.require('../contracts/VestingTrustee.sol');
+const Trustee = artifacts.require('../contracts/Trustee.sol');
 
-contract('VestingTrustee', (accounts) => {
+contract('Trustee', (accounts) => {
     const MINUTE = 60;
     const HOUR = 60 * MINUTE;
     const DAY = 24 * 60;
@@ -21,36 +21,34 @@ contract('VestingTrustee', (accounts) => {
         now = web3.eth.getBlock(web3.eth.blockNumber).timestamp;
 
         token = await StoxSmartToken.new();
-        trustee = await VestingTrustee.new(token.address, {from: granter});
+        trustee = await Trustee.new(token.address, {from: granter});
     });
 
     let getGrant = async (address) => {
         let grant = await trustee.grants(address);
 
         return {
-            granter: grant[0],
-            value: grant[1],
-            start: grant[2],
-            cliff: grant[3],
-            end: grant[4],
-            transferred: grant[5],
-            revokable: grant[6]
+            value: grant[0],
+            start: grant[1],
+            cliff: grant[2],
+            end: grant[3],
+            transferred: grant[4],
+            revokable: grant[5]
         };
     }
 
     describe('construction', async () => {
         it('should be initialized with a valid address', async () => {
-            await expectThrow(VestingTrustee.new());
+            await expectThrow(Trustee.new());
         });
 
         it('should be ownable', async () => {
             assert.equal(await trustee.owner(), granter);
         });
-    });
 
-    describe('balance', async () => {
         it('should initially start with 0', async () => {
-            assert.equal((await trustee.balance()).toNumber(), 0);
+            let trusteeBalance = (await token.balanceOf(trustee.address)).toNumber();
+            assert.equal(trusteeBalance, 0);
         });
 
         let balance = 1000;
@@ -60,14 +58,16 @@ contract('VestingTrustee', (accounts) => {
             });
 
             it(`should equal to ${balance}`, async () => {
-                assert.equal((await trustee.balance()).toNumber(), balance);
+                let trusteeBalance = (await token.balanceOf(trustee.address)).toNumber();
+                assert.equal(trusteeBalance, balance);
             });
 
             it('should be able to update', async () => {
                 let value = 10;
 
                 await token.issue(trustee.address, value);
-                assert.equal((await trustee.balance()).toNumber(), balance + value);
+                let trusteeBalance = (await token.balanceOf(trustee.address)).toNumber();
+                assert.equal(trusteeBalance, balance + value);
             });
         });
     });
@@ -135,7 +135,6 @@ contract('VestingTrustee', (accounts) => {
 
                 assert.equal((await trustee.totalVesting()).toNumber(), totalVesting + value);
                 let grant = await getGrant(accounts[0]);
-                assert.equal(grant.granter, accounts[0]);
                 assert.equal(grant.value, value);
                 assert.equal(grant.start, start);
                 assert.equal(grant.cliff, cliff);
@@ -151,7 +150,6 @@ contract('VestingTrustee', (accounts) => {
 
                 assert.equal((await trustee.totalVesting()).toNumber(), totalVesting + value + value2);
                 let grant2 = await getGrant(accounts[1]);
-                assert.equal(grant2.granter, accounts[0]);
                 assert.equal(grant2.value, value2);
                 assert.equal(grant2.start, start2);
                 assert.equal(grant2.cliff, cliff2);
@@ -182,24 +180,11 @@ contract('VestingTrustee', (accounts) => {
                 await expectThrow(trustee.revoke(grantee));
             });
 
-            it('should only allow revoking a grant by its granter', async () => {
+            it('should only allow revoking a grant by an owner', async () => {
                 let grantee = accounts[1];
 
                 await trustee.grant(grantee, balance, now, now + MONTH, now + YEAR, true);
                 await expectThrow(trustee.revoke(grantee, {from: accounts[9]}));
-
-                await trustee.revoke(grantee, {from: granter});
-            });
-
-            it('should only allow revoking a grant by its granter, even if ownership was changed', async () => {
-                let grantee = accounts[1];
-
-                await trustee.grant(grantee, balance, now, now + MONTH, now + YEAR, true);
-                await expectThrow(trustee.revoke(grantee, {from: notOwner}));
-
-                await trustee.requestOwnershipTransfer(notOwner);
-                await trustee.acceptOwnership({from: notOwner});
-                assert.equal(await trustee.owner(), notOwner);
 
                 await trustee.revoke(grantee, {from: granter});
             });
@@ -253,15 +238,14 @@ contract('VestingTrustee', (accounts) => {
 
                     for (let i = 0; i < grant.results.length; ++i) {
                         it(`should revoke the grant and refund tokens after ${i + 1} transactions`, async () => {
-
-                            trustee = await VestingTrustee.new(token.address, {from: granter});
+                            trustee = await Trustee.new(token.address, {from: granter});
                             await token.issue(trustee.address, grant.tokens);
                             await trustee.grant(holder, grant.tokens, now + grant.startOffset, now + grant.cliffOffset,
                                 now + grant.endOffset, true);
 
                             // Get previous state.
                             let totalVesting = (await trustee.totalVesting()).toNumber();
-                            let trusteeBalance = (await trustee.balance()).toNumber();
+                            let trusteeBalance = (await token.balanceOf(trustee.address)).toNumber();
                             let userBalance = (await token.balanceOf(holder)).toNumber();
                             let transferred = (await getGrant(holder)).transferred.toNumber();
                             let granterBalance = (await token.balanceOf(granter)).toNumber();
@@ -280,7 +264,7 @@ contract('VestingTrustee', (accounts) => {
 
                             // Verify the state after the multiple unlocks.
                             let totalVesting2 = (await trustee.totalVesting()).toNumber();
-                            let trusteeBalance2 = (await trustee.balance()).toNumber();
+                            let trusteeBalance2 = (await token.balanceOf(trustee.address)).toNumber();
                             let userBalance2 = (await token.balanceOf(holder)).toNumber();
                             let transferred2 = (await getGrant(holder)).transferred.toNumber();
 
@@ -294,12 +278,12 @@ contract('VestingTrustee', (accounts) => {
                             console.log(`\texpecting ${refundTokens} tokens refunded after ${i + 1} transactions`);
 
                             let vestingGrant = await getGrant(holder);
-                            assert.equal(vestingGrant.granter, granter);
+                            assert.equal(vestingGrant.value, grant.tokens);
 
                             await trustee.revoke(holder);
 
                             let totalVesting3 = (await trustee.totalVesting()).toNumber();
-                            let trusteeBalance3 = (await trustee.balance()).toNumber();
+                            let trusteeBalance3 = (await token.balanceOf(trustee.address)).toNumber();
                             let userBalance3 = (await token.balanceOf(holder)).toNumber();
                             let granterBalance2 = (await token.balanceOf(granter)).toNumber();
 
@@ -309,7 +293,7 @@ contract('VestingTrustee', (accounts) => {
                             assertHelper.around(granterBalance2, granterBalance + refundTokens, MAX_ERROR);
 
                             let vestingGrant2 = await getGrant(holder);
-                            assert.equal(vestingGrant2.granter, 0);
+                            assert.equal(vestingGrant2.tokens, undefined);
                         });
                     }
                 });
@@ -328,7 +312,11 @@ contract('VestingTrustee', (accounts) => {
             let holder = accounts[5];
             let grant = await getGrant(holder);
 
-            assert.equal(grant.granter, 0);
+            assert.equal(grant.value, 0);
+            assert.equal(grant.start, 0);
+            assert.equal(grant.cliff, 0);
+            assert.equal(grant.end, 0);
+
             assert.equal((await trustee.vestedTokens(holder, now + 100 * YEAR)).toNumber(), 0);
         });
 
@@ -411,7 +399,10 @@ contract('VestingTrustee', (accounts) => {
             let holder = accounts[5];
             let grant = await getGrant(holder);
 
-            assert.equal(grant.granter, 0);
+            assert.equal(grant.value, 0);
+            assert.equal(grant.start, 0);
+            assert.equal(grant.cliff, 0);
+            assert.equal(grant.end, 0);
 
             await expectThrow(trustee.unlockVestedTokens({from: holder}));
         });
@@ -482,7 +473,7 @@ contract('VestingTrustee', (accounts) => {
 
                         // Get previous state.
                         let totalVesting = (await trustee.totalVesting()).toNumber();
-                        let trusteeBalance = (await trustee.balance()).toNumber();
+                        let trusteeBalance = (await token.balanceOf(trustee.address)).toNumber();
                         let userBalance = (await token.balanceOf(holder)).toNumber();
                         let transferred = (await getGrant(holder)).transferred.toNumber();
 
@@ -492,7 +483,7 @@ contract('VestingTrustee', (accounts) => {
 
                         // Verify new state.
                         let totalVesting2 = (await trustee.totalVesting()).toNumber();
-                        let trusteeBalance2 = (await trustee.balance()).toNumber();
+                        let trusteeBalance2 = (await token.balanceOf(trustee.address)).toNumber();
                         let userBalance2 = (await token.balanceOf(holder)).toNumber();
                         let transferred2 = (await getGrant(holder)).transferred.toNumber();
 
@@ -503,6 +494,45 @@ contract('VestingTrustee', (accounts) => {
                     }
                 });
             });
+        });
+
+        it('should allow revoking multiple grants', async () => {
+            let grants = [
+                {tokens: 1000, startOffset: 0, cliffOffset: MONTH, endOffset: YEAR, holder: accounts[1]},
+                {tokens: 1000, startOffset: 0, cliffOffset: MONTH, endOffset: YEAR, holder: accounts[2]},
+                {tokens: 1000000, startOffset: 0, cliffOffset: 0, endOffset: 4 * YEAR, holder: accounts[3]},
+                {tokens: 1245, startOffset: 0, cliffOffset: 0, endOffset: 1 * YEAR, holder: accounts[4]},
+                {tokens: 233223, startOffset: 0, cliffOffset: 2 * MONTH, endOffset: 2 * YEAR, holder: accounts[5]}
+            ];
+
+            let granterBalance = (await token.balanceOf(granter)).toNumber();
+            let trusteeBalance = (await token.balanceOf(trustee.address)).toNumber();
+            assert.equal(granterBalance, 0);
+            assert.equal(trusteeBalance, balance);
+
+            let totalGranted = 0;
+
+            for (let grant of grants) {
+                await token.issue(trustee.address, grant.tokens);
+                await trustee.grant(grant.holder, grant.tokens, now + grant.startOffset, now + grant.cliffOffset, now +
+                    grant.endOffset, true);
+
+                totalGranted += grant.tokens;
+            }
+
+            let granterBalance2 = (await token.balanceOf(granter)).toNumber();
+            let trusteeBalance2 = (await token.balanceOf(trustee.address)).toNumber();
+            assert.equal(granterBalance2, 0);
+            assert.equal(trusteeBalance2, trusteeBalance + totalGranted);
+
+            for (let grant of grants) {
+                await trustee.revoke(grant.holder);
+            }
+
+            let granterBalance3 = (await token.balanceOf(granter)).toNumber();
+            let trusteeBalance3 = (await token.balanceOf(trustee.address)).toNumber();
+            assert.equal(granterBalance3, totalGranted);
+            assert.equal(trusteeBalance3, trusteeBalance2 - totalGranted);
         });
     });
 });
