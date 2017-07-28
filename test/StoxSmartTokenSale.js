@@ -478,4 +478,147 @@ contract('StoxSmartTokenSale', (accounts) => {
 
         return sale.send(value);
     });
+
+    describe('transfer ownership', async () => {
+        let sale;
+        let token;
+        let trustee;
+        let start;
+        let startFrom = 10;
+        let end;
+        let endTo = 20;
+        let fundRecipient = accounts[8];
+
+        beforeEach(async () => {
+            start = blockNumber + startFrom;
+            end = blockNumber + endTo;
+            sale = await StoxSmartTokenSaleMock.new(fundRecipient, start, end);
+            token = StoxSmartToken.at(await sale.stox());
+        });
+
+        let testTransferAndAcceptTokenOwnership = async () => {
+            let owner = accounts[0];
+            let newOwner = accounts[1];
+            let notOwner = accounts[8];
+
+            describe('transferSmartTokenOwnership', async () => {
+                it('should be only possible to call by the owner', async () => {
+                    await expectThrow(sale.transferSmartTokenOwnership(newOwner, {from: notOwner}));
+                });
+
+                it('should transfer ownership', async () => {
+                    assert.equal(await token.owner(), sale.address);
+
+                    await sale.transferSmartTokenOwnership(newOwner, {from: owner});
+                    assert.equal(await token.owner(), sale.address);
+
+                    await token.acceptOwnership({from: newOwner});
+                    assert.equal(await token.owner(), newOwner);
+
+                    // Shouldn't be possible to called twice.
+                    await expectThrow(sale.transferSmartTokenOwnership(newOwner, {from: owner}));
+                });
+            });
+
+            describe('acceptSmartTokenOwnership', async () => {
+                it('should be only possible to call by the owner', async () => {
+                    await expectThrow(sale.acceptSmartTokenOwnership(newOwner, {from: notOwner}));
+                });
+
+                it('should be able to claim ownership back', async () => {
+                    assert.equal(await token.owner(), sale.address);
+
+                    await sale.transferSmartTokenOwnership(newOwner, {from: owner});
+                    await token.acceptOwnership({from: newOwner});
+                    assert.equal(await token.owner(), newOwner);
+
+                    await token.transferOwnership(sale.address, {from: newOwner});
+                    assert.equal(await token.owner(), newOwner);
+
+                    await sale.acceptSmartTokenOwnership({from: owner});
+                    assert.equal(await token.owner(), sale.address);
+                });
+            });
+        };
+
+        let testTransferAndAcceptTrusteeOwnership = async () => {
+            let owner = accounts[0];
+            let newOwner = accounts[1];
+            let notOwner = accounts[8];
+
+            describe('transferTrusteeOwnership', async () => {
+                it('should be only possible to call by the owner', async () => {
+                    await expectThrow(sale.transferTrusteeOwnership(newOwner, {from: notOwner}));
+                });
+
+                it('should transfer ownership', async () => {
+                    assert.equal(await trustee.owner(), sale.address);
+
+                    await sale.transferTrusteeOwnership(newOwner, {from: owner});
+                    assert.equal(await trustee.owner(), sale.address);
+
+                    await trustee.acceptOwnership({from: newOwner});
+                    assert.equal(await trustee.owner(), newOwner);
+
+                    // Shouldn't be possible to called twice.
+                    await expectThrow(sale.transferTrusteeOwnership(newOwner, {from: owner}));
+                });
+            });
+
+            describe('acceptTrusteeOwnership', async () => {
+                it('should be only possible to call by the owner', async () => {
+                    await expectThrow(sale.acceptTrusteeOwnership(newOwner, {from: notOwner}));
+                });
+
+                it('should be able to claim ownership back', async () => {
+                    assert.equal(await trustee.owner(), sale.address);
+
+                    await sale.transferTrusteeOwnership(newOwner, {from: owner});
+                    await trustee.acceptOwnership({from: newOwner});
+                    assert.equal(await trustee.owner(), newOwner);
+
+                    await trustee.transferOwnership(sale.address, {from: newOwner});
+                    assert.equal(await trustee.owner(), newOwner);
+
+                    await sale.acceptTrusteeOwnership({from: owner});
+                    assert.equal(await trustee.owner(), sale.address);
+                });
+            });
+
+        };
+
+        context('during the sale', async () => {
+            beforeEach(async () => {
+                await waitUntilBlockNumber(start);
+            });
+
+            testTransferAndAcceptTokenOwnership();
+        });
+
+        context('after the sale', async () => {
+            context('reached token cap', async() => {
+                beforeEach(async () => {
+                    await sale.setTokensSold(TOKEN_SALE_CAP.toNumber());
+                    await sale.finalize();
+
+                    trustee = Trustee.at(await sale.trustee());
+                });
+
+                testTransferAndAcceptTokenOwnership();
+                testTransferAndAcceptTrusteeOwnership();
+            });
+
+            context('after the ending time', async() => {
+                beforeEach(async () => {
+                    await waitUntilBlockNumber(end + 1);
+                    await sale.finalize();
+
+                    trustee = Trustee.at(await sale.trustee());
+                });
+
+                testTransferAndAcceptTokenOwnership();
+                testTransferAndAcceptTrusteeOwnership();
+            });
+        });
+    });
 });

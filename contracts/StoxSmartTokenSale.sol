@@ -167,4 +167,38 @@ contract StoxSmartTokenSale is Ownable {
     function () external payable onlyDuringSale {
         create(msg.sender);
     }
+
+    /// @dev Proposes to transfer control of the StoxSmartToken contract to a new owner.
+    /// @param _newOwnerCandidate address The address to transfer ownership to.
+    ///
+    /// Note that:
+    ///   1. The new owner will need to call StoxSmartToken's acceptOwnership directly in order to accept the ownership.
+    ///   2. Calling this method during the token sale will prevent the token sale to continue, since only the owner of
+    ///      the StoxSmartToken contract can issue new tokens.
+    function transferSmartTokenOwnership(address _newOwnerCandidate) external onlyOwner {
+        stox.transferOwnership(_newOwnerCandidate);
+    }
+
+    /// @dev Accepts new ownership on behalf of the StoxSmartToken contract. This can be used, by the token sale
+    /// contract itself to claim back ownership of the StoxSmartToken contract.
+    function acceptSmartTokenOwnership() external onlyOwner {
+        stox.acceptOwnership();
+    }
+
+    /// @dev Proposes to transfer control of the Trustee contract to a new owner.
+    /// @param _newOwnerCandidate address The address to transfer ownership to.
+    ///
+    /// Note that:
+    ///   1. The new owner will need to call Trustee's acceptOwnership directly in order to accept the ownership.
+    ///   2. Calling this method during the token sale won't be possible, as the Trustee is only created after its
+    ///      finalization.
+    function transferTrusteeOwnership(address _newOwnerCandidate) external onlyOwner {
+        trustee.transferOwnership(_newOwnerCandidate);
+    }
+
+    /// @dev Accepts new ownership on behalf of the Trustee contract. This can be used, by the token sale
+    /// contract itself to claim back ownership of the Trustee contract.
+    function acceptTrusteeOwnership() external onlyOwner {
+        trustee.acceptOwnership();
+    }
 }
