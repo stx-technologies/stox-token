@@ -16,7 +16,7 @@ contract('StoxSmartToken', (accounts) => {
         });
 
         it('should return correct name after construction', async () => {
-            assert.equal(await token.name(), 'Stox Token');
+            assert.equal(await token.name(), 'Stox');
         });
 
         it('should return correct symbol after construction', async () => {
