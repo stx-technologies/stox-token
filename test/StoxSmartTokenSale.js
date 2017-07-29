@@ -222,6 +222,8 @@ contract('StoxSmartTokenSale', (accounts) => {
                         assertHelper.around(tokenGrant.start, now, MAX_TIME_ERROR);
                         assertHelper.around(tokenGrant.cliff, now, MAX_TIME_ERROR);
                         assertHelper.around(tokenGrant.end, now + grant.vesting, MAX_TIME_ERROR);
+                        assert.equal(tokenGrant.transferred, 0);
+                        assert.equal(tokenGrant.revokable, true);
                     });
                 }
 
