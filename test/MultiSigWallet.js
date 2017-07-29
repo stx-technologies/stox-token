@@ -157,7 +157,7 @@ contract('MultiSigWallet', (accounts) => {
             let token = await StoxSmartToken.new();
 
             let value = 200;
-            token.issue(sender, value);
+            await token.issue(sender, value);
 
             let senderBalance = await token.balanceOf(sender);
             let walletBalance = await token.balanceOf(wallet.address);
