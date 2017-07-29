@@ -133,6 +133,7 @@ contract StoxSmartTokenSale is Ownable {
     /// @dev Create and sell tokens to the caller.
     /// @param _recipient address The address of the recipient.
     function create(address _recipient) public payable onlyDuringSale {
+        require(_recipient != address(0));
         require(msg.value > 0);
 
         uint256 tokens = SaferMath.min256(msg.value.mul(EXCHANGE_RATE), TOKEN_SALE_CAP.sub(tokensSold));
