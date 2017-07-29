@@ -520,7 +520,7 @@ contract('StoxSmartTokenSale', (accounts) => {
 
             describe('acceptSmartTokenOwnership', async () => {
                 it('should be only possible to call by the owner', async () => {
-                    await expectThrow(sale.acceptSmartTokenOwnership(newOwner, {from: notOwner}));
+                    await expectThrow(sale.acceptSmartTokenOwnership({from: notOwner}));
                 });
 
                 it('should be able to claim ownership back', async () => {
@@ -565,7 +565,7 @@ contract('StoxSmartTokenSale', (accounts) => {
 
             describe('acceptTrusteeOwnership', async () => {
                 it('should be only possible to call by the owner', async () => {
-                    await expectThrow(sale.acceptTrusteeOwnership(newOwner, {from: notOwner}));
+                    await expectThrow(sale.acceptTrusteeOwnership({from: notOwner}));
                 });
 
                 it('should be able to claim ownership back', async () => {
