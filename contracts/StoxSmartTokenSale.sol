@@ -26,8 +26,7 @@ contract StoxSmartTokenSale is Ownable {
     // TODO: update to the correct values.
     uint256 public constant ETH_PRICE_USD = 227;
     uint256 public constant EXCHANGE_RATE = 200; // 200 STX for ETH
-    uint256 public constant PARTNER_TOKENS = 4 * 10 ** 6 * 10 ** 18; // TODO: use real amounts.
-    uint256 public constant PARTNER_BONUS = 2 * 10 ** 6 * 10 ** 18; // TODO: use real amounts.
+    uint256 public constant PARTNER_TOKENS = 5 * 10 ** 6 * 10 ** 18; // TODO: use real amounts.
 
     // $30M worth of STX (including tokens which were granted to pre-sale strategic partners).
     uint256 public constant TOKEN_SALE_CAP = (30 * 10 ** 6 / ETH_PRICE_USD) * EXCHANGE_RATE * 10 ** 18 - PARTNER_TOKENS;
@@ -81,14 +80,10 @@ contract StoxSmartTokenSale is Ownable {
         issueTokens(0x0010230123012010312300102301230120103122, 1 * 10 ** 6 * 10 ** 18);
         issueTokens(0x0010230123012010312300102301230120103123, (2 * 10 ** 6 - 50) * 10 ** 18);
         issueTokens(0x0010230123012010312300102301230120103124, 50 * 10 ** 18);
-        issueTokens(0x0010230123012010312300102301230120103125, 2 * 10 ** 6 * 10 ** 18);
-
-        // Don't count the bonus as part of the sale. PARTNER_BONUS of will be deducted from Stox' strategic partnership
-        // vesting grant below.
-        tokensSold = tokensSold.sub(PARTNER_BONUS);
+        issueTokens(0x0010230123012010312300102301230120103125, 1 * 10 ** 6 * 10 ** 18);
 
         assert(tokensSold == PARTNER_TOKENS);
-        assert(stox.totalSupply() == PARTNER_TOKENS.add(PARTNER_BONUS));
+        assert(stox.totalSupply() == PARTNER_TOKENS);
     }
 
     /// @dev Finalizes the token sale event.
@@ -111,7 +106,7 @@ contract StoxSmartTokenSale is Ownable {
 
         // Note: we will substract the bonus tokens from this grant, since they were already issued for the pre-sale
         // strategic partners and should've been taken from this allocation.
-        stox.issue(0x0010230123012010312300102301230120103129, strategicPartnershipTokens.sub(PARTNER_BONUS));
+        stox.issue(0x0010230123012010312300102301230120103129, strategicPartnershipTokens);
 
         // Issue the remaining tokens as vesting grants:
         stox.issue(trustee, unsoldTokens.sub(strategicPartnershipTokens));

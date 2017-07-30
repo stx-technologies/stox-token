@@ -20,15 +20,14 @@ contract('StoxSmartTokenSale', (accounts) => {
     const ETH_PRICE_USD = 227;
     const EXCHANGE_RATE = 200; // 200 STX for ETH
 
-    const PARTNER_TOKENS = new BigNumber(4 * Math.pow(10, 6)).mul(STX); // TODO: use real amount.
-    const PARTNER_BONUS = new BigNumber(2 * Math.pow(10, 6)).mul(STX); // TODO: use real amount.
+    const PARTNER_TOKENS = new BigNumber(5 * Math.pow(10, 6)).mul(STX); // TODO: use real amount.
 
     const PARTNERS = [
         {address: '0x0010230123012010312300102301230120103121', value: 1 * Math.pow(10, 6) * STX},
         {address: '0x0010230123012010312300102301230120103122', value: 1 * Math.pow(10, 6) * STX},
         {address: '0x0010230123012010312300102301230120103123', value: (2 * Math.pow(10, 6) - 50) * STX},
         {address: '0x0010230123012010312300102301230120103124', value: 50 * STX},
-        {address: '0x0010230123012010312300102301230120103125', value: 2 * Math.pow(10, 6) * STX}
+        {address: '0x0010230123012010312300102301230120103125', value: 1 * Math.pow(10, 6) * STX}
     ];
 
     let VESTING_GRANTS = [
@@ -36,8 +35,7 @@ contract('StoxSmartTokenSale', (accounts) => {
         {grantee: '0x0010230123012010312300102301230120103122', percent: 20, vesting: 2 * YEAR}
     ];
 
-    let STRATEGIC_PARTNERSHIP_GRANT =
-        {address: '0x0010230123012010312300102301230120103129', percent: 55, penalty: PARTNER_BONUS};
+    let STRATEGIC_PARTNERSHIP_GRANT = {address: '0x0010230123012010312300102301230120103129', percent: 55};
 
     // $30M worth of STX.
     const TOKEN_SALE_CAP = new BigNumber(30 * Math.pow(10, 6)).div(ETH_PRICE_USD).floor().mul(EXCHANGE_RATE).
@@ -117,17 +115,17 @@ contract('StoxSmartTokenSale', (accounts) => {
             });
 
             it(`should distribute ${PARTNER_TOKENS / STX} STX to partners at creation`, async () => {
-                let totalPartnersSupply = 0;
+                let totalPartnersSupply = new BigNumber(0);
 
                 for (let partner of PARTNERS) {
                     assert.equal((await token.balanceOf(partner.address)).toNumber(), partner.value);
 
-                    totalPartnersSupply += partner.value;
+                    totalPartnersSupply = totalPartnersSupply.add(partner.value);
                 }
 
-                assert.equal(totalPartnersSupply, PARTNER_TOKENS.add(PARTNER_BONUS));
-                assert.equal((await token.totalSupply()).toNumber(), totalPartnersSupply);
-                assert.equal((await sale.tokensSold()).toNumber(), PARTNER_TOKENS);
+                assert.equal(totalPartnersSupply.toNumber(), PARTNER_TOKENS.toNumber());
+                assert.equal((await token.totalSupply()).toNumber(), totalPartnersSupply.toNumber());
+                assert.equal((await sale.tokensSold()).toNumber(), PARTNER_TOKENS.toNumber());
             });
         });
     });
@@ -247,7 +245,7 @@ contract('StoxSmartTokenSale', (accounts) => {
                     let tokensSold = await sale.tokensSold();
 
                     let partnersActualGrant = tokensSold.mul(STRATEGIC_PARTNERSHIP_GRANT.percent).div(100).floor().
-                        minus(STRATEGIC_PARTNERSHIP_GRANT.penalty).toNumber();
+                        toNumber();
 
                     let partnershipBalance = (await token.balanceOf(STRATEGIC_PARTNERSHIP_GRANT.address)).toNumber();
                     assert.equal(partnershipBalance, partnersActualGrant);
