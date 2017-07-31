@@ -21,6 +21,8 @@ contract('Trustee', (accounts) => {
         now = web3.eth.getBlock(web3.eth.blockNumber).timestamp;
 
         token = await StoxSmartToken.new();
+        await token.disableTransfers(false);
+
         trustee = await Trustee.new(token.address, {from: granter});
     });
 

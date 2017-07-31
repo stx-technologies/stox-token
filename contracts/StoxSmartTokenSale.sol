@@ -10,6 +10,7 @@ contract StoxSmartTokenSale is Ownable {
     using SaferMath for uint256;
 
     bool public isFinalized = false;
+    bool public isDistributed = false;
 
     // The address of the STX ERC20 token.
     StoxSmartToken public stox;
@@ -55,26 +56,23 @@ contract StoxSmartTokenSale is Ownable {
     /// @param _fundingRecipient address The address of the funding recipient.
     /// @param _startBlock uint256 The block that the token sale should start at.
     /// @param _endBlock uint256 The block that the token sale should end at.
-    function StoxSmartTokenSale(address _fundingRecipient, uint256 _startBlock, uint256 _endBlock) {
+    function StoxSmartTokenSale(address _stox, address _fundingRecipient, uint256 _startBlock, uint256 _endBlock) {
+        require(_stox != address(0));
         require(_fundingRecipient != address(0));
         require(_startBlock > block.number);
         require(_endBlock > _startBlock);
 
-        // Deploy new StoxSmartToken contract.
-        stox = new StoxSmartToken();
-
-        // Disable transfers during the token sale.
-        stox.disableTransfers(true);
+        stox = StoxSmartToken(_stox);
 
         fundingRecipient = _fundingRecipient;
         startBlock = _startBlock;
         endBlock = _endBlock;
-
-        distributePartnerTokens();
     }
 
     /// @dev Distributed tokens to the partners who have participated during the pre-sale.
-    function distributePartnerTokens() private onlyOwner {
+    function distributePartnerTokens() external onlyOwner {
+        require(!isDistributed);
+
         // TODO: add real partner addresses.
         issueTokens(0x0010230123012010312300102301230120103121, 1 * 10 ** 6 * 10 ** 18);
         issueTokens(0x0010230123012010312300102301230120103122, 1 * 10 ** 6 * 10 ** 18);
@@ -84,6 +82,8 @@ contract StoxSmartTokenSale is Ownable {
 
         assert(tokensSold == PARTNER_TOKENS);
         assert(stox.totalSupply() == PARTNER_TOKENS);
+
+        isDistributed = true;
     }
 
     /// @dev Finalizes the token sale event.

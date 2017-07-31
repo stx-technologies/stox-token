@@ -27,8 +27,8 @@ contract('StoxSmartToken', (accounts) => {
             assert.equal(await token.decimals(), 18);
         });
 
-        it('should be initialized as transferable', async () => {
-            assert.equal(await token.transfersEnabled(), true);
+        it('should be initialized as not transferable', async () => {
+            assert.equal(await token.transfersEnabled(), false);
         });
     });
 });

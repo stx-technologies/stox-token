@@ -155,6 +155,7 @@ contract('MultiSigWallet', (accounts) => {
 
         it('should receive STX', async () => {
             let token = await StoxSmartToken.new();
+            await token.disableTransfers(false);
 
             let value = 200;
             await token.issue(sender, value);
@@ -202,6 +203,7 @@ contract('MultiSigWallet', (accounts) => {
                     assert.equal(web3.eth.getBalance(wallet.address).toNumber(), initETHBalance);
 
                     token = await StoxSmartToken.new();
+                    await token.disableTransfers(false);
 
                     await token.issue(wallet.address, initSTXBalance);
                     assert.equal((await token.balanceOf(wallet.address)).toNumber(), initSTXBalance);
