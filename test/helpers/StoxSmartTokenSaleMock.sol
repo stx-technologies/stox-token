@@ -14,4 +14,8 @@ contract StoxSmartTokenSaleMock is StoxSmartTokenSale {
     function setFinalized(bool state) {
         isFinalized = state;
     }
+
+    function setDistributed(bool state) {
+        isDistributed = state;
+    }
 }

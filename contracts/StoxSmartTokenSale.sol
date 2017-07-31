@@ -134,6 +134,8 @@ contract StoxSmartTokenSale is Ownable {
         require(_recipient != address(0));
         require(msg.value > 0);
 
+        assert(isDistributed);
+
         uint256 tokens = SaferMath.min256(msg.value.mul(EXCHANGE_RATE), TOKEN_SALE_CAP.sub(tokensSold));
         uint256 contribution = tokens.div(EXCHANGE_RATE);
 

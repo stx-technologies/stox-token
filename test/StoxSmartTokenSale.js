@@ -464,6 +464,11 @@ contract('StoxSmartTokenSale', (accounts) => {
                     await expectThrow(method(sale, 0));
                 });
 
+                it('should throw if have not distributed tokens to pre-sale participants', async () => {
+                    await sale.setDistributed(false);
+                    await expectThrow(method(sale, 1000));
+                });
+
                 [
                     [
                         { from: accounts[1], value: ETH },
