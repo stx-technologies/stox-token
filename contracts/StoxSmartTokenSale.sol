@@ -73,6 +73,9 @@ contract StoxSmartTokenSale is Ownable {
     function distributePartnerTokens() external onlyOwner {
         require(!isDistributed);
 
+        assert(tokensSold == 0);
+        assert(stox.totalSupply() == 0);
+
         // TODO: add real partner addresses.
         issueTokens(0x0010230123012010312300102301230120103121, 1 * 10 ** 6 * 10 ** 18);
         issueTokens(0x0010230123012010312300102301230120103122, 1 * 10 ** 6 * 10 ** 18);
