@@ -27,10 +27,7 @@ contract StoxSmartTokenSale is Ownable {
     // TODO: update to the correct values.
     uint256 public constant ETH_CAP = 148000;
     uint256 public constant EXCHANGE_RATE = 200; // 200 STX for ETH
-    uint256 public constant PARTNER_TOKENS = 5 * 10 ** 6 * 10 ** 18; // TODO: use real amounts.
-
-    // $30M worth of STX (including tokens which were granted to pre-sale strategic partners).
-    uint256 public constant TOKEN_SALE_CAP = ETH_CAP * EXCHANGE_RATE * 10 ** 18 - PARTNER_TOKENS;
+    uint256 public constant TOKEN_SALE_CAP = ETH_CAP * EXCHANGE_RATE * 10 ** 18;
 
     event TokensIssued(address indexed _to, uint256 _tokens);
 
@@ -77,14 +74,10 @@ contract StoxSmartTokenSale is Ownable {
         assert(stox.totalSupply() == 0);
 
         // TODO: add real partner addresses.
-        issueTokens(0x0010230123012010312300102301230120103121, 1 * 10 ** 6 * 10 ** 18);
+        issueTokens(0xDCa9d05f432e02802542A1AA7d427cB726d01447, 1 * 10 ** 6 * 10 ** 18);
         issueTokens(0x0010230123012010312300102301230120103122, 1 * 10 ** 6 * 10 ** 18);
-        issueTokens(0x0010230123012010312300102301230120103123, (2 * 10 ** 6 - 50) * 10 ** 18);
-        issueTokens(0x0010230123012010312300102301230120103124, 50 * 10 ** 18);
+        issueTokens(0x0010230123012010312300102301230120103123, 2 * 10 ** 6 * 10 ** 18);
         issueTokens(0x0010230123012010312300102301230120103125, 1 * 10 ** 6 * 10 ** 18);
-
-        assert(tokensSold == PARTNER_TOKENS);
-        assert(stox.totalSupply() == PARTNER_TOKENS);
 
         isDistributed = true;
     }

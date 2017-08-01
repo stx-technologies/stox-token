@@ -20,13 +20,10 @@ contract('StoxSmartTokenSale', (accounts) => {
     const ETH_CAP = 148000;
     const EXCHANGE_RATE = 200; // 200 STX for ETH
 
-    const PARTNER_TOKENS = new BigNumber(5 * Math.pow(10, 6)).mul(STX); // TODO: use real amount.
-
     const PARTNERS = [
-        {address: '0x0010230123012010312300102301230120103121', value: 1 * Math.pow(10, 6) * STX},
+        {address: '0xDCa9d05f432e02802542A1AA7d427cB726d01447', value: 1 * Math.pow(10, 6) * STX},
         {address: '0x0010230123012010312300102301230120103122', value: 1 * Math.pow(10, 6) * STX},
-        {address: '0x0010230123012010312300102301230120103123', value: (2 * Math.pow(10, 6) - 50) * STX},
-        {address: '0x0010230123012010312300102301230120103124', value: 50 * STX},
+        {address: '0x0010230123012010312300102301230120103123', value: 2 * Math.pow(10, 6) * STX},
         {address: '0x0010230123012010312300102301230120103125', value: 1 * Math.pow(10, 6) * STX}
     ];
 
@@ -38,7 +35,7 @@ contract('StoxSmartTokenSale', (accounts) => {
     let STRATEGIC_PARTNERSHIP_GRANT = {address: '0x0010230123012010312300102301230120103129', percent: 55};
 
     // $30M worth of STX.
-    const TOKEN_SALE_CAP = new BigNumber(ETH_CAP).mul(EXCHANGE_RATE).mul(STX).minus(PARTNER_TOKENS);
+    const TOKEN_SALE_CAP = new BigNumber(ETH_CAP).mul(EXCHANGE_RATE).mul(STX);
 
     let waitUntilBlockNumber = async (blockNumber) => {
         console.log(`Mining until block: ${blockNumber}. Please wait for a couple of moments...`);
@@ -161,7 +158,7 @@ contract('StoxSmartTokenSale', (accounts) => {
                 await expectThrow(sale.distributePartnerTokens());
             });
 
-            it(`should distribute ${PARTNER_TOKENS / STX} STX to partners`, async () => {
+            it('should distribute STX to partners', async () => {
                 await sale.distributePartnerTokens();
 
                 let totalPartnersSupply = new BigNumber(0);
@@ -172,9 +169,8 @@ contract('StoxSmartTokenSale', (accounts) => {
                     totalPartnersSupply = totalPartnersSupply.add(partner.value);
                 }
 
-                assert.equal(totalPartnersSupply.toNumber(), PARTNER_TOKENS.toNumber());
                 assert.equal((await token.totalSupply()).toNumber(), totalPartnersSupply.toNumber());
-                assert.equal((await sale.tokensSold()).toNumber(), PARTNER_TOKENS.toNumber());
+                assert.equal((await sale.tokensSold()).toNumber(), totalPartnersSupply.toNumber());
             });
         });
 
