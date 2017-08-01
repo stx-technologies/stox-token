@@ -21,18 +21,15 @@ contract('StoxSmartTokenSale', (accounts) => {
     const EXCHANGE_RATE = 200; // 200 STX for ETH
 
     const PARTNERS = [
-        {address: '0xDCa9d05f432e02802542A1AA7d427cB726d01447', value: 1 * Math.pow(10, 6) * STX},
-        {address: '0x0010230123012010312300102301230120103122', value: 1 * Math.pow(10, 6) * STX},
-        {address: '0x0010230123012010312300102301230120103123', value: 2 * Math.pow(10, 6) * STX},
-        {address: '0x0010230123012010312300102301230120103125', value: 1 * Math.pow(10, 6) * STX}
+        {address: '0x9065260ef6830f6372F1Bde408DeC57Fe3150530', value: 14800000 * STX}
     ];
 
     let VESTING_GRANTS = [
-        {grantee: '0x0010230123012010312300102301230120103121', percent: 25, vesting: 1 * YEAR},
-        {grantee: '0x0010230123012010312300102301230120103122', percent: 20, vesting: 2 * YEAR}
+        {grantee: '0xb54c6a870d4aD65e23d471Fb7941aD271D323f5E', percent: 25, vesting: 1 * YEAR},
+        {grantee: '0x4eB4Cd1D125d9d281709Ff38d65b99a6927b46c1', percent: 20, vesting: 2 * YEAR}
     ];
 
-    let STRATEGIC_PARTNERSHIP_GRANT = {address: '0x0010230123012010312300102301230120103129', percent: 55};
+    let STRATEGIC_PARTNERSHIP_GRANT = {address: '0xbC14105ccDdeAadB96Ba8dCE18b40C45b6bACf58', percent: 55};
 
     // $30M worth of STX.
     const TOKEN_SALE_CAP = new BigNumber(ETH_CAP).mul(EXCHANGE_RATE).mul(STX);

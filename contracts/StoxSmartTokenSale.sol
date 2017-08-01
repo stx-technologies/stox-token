@@ -29,6 +29,11 @@ contract StoxSmartTokenSale is Ownable {
     uint256 public constant EXCHANGE_RATE = 200; // 200 STX for ETH
     uint256 public constant TOKEN_SALE_CAP = ETH_CAP * EXCHANGE_RATE * 10 ** 18;
 
+    address public constant STRATEGIC_PARTNERS_AGGREGATED_PRESALE_ADDRESS = 0x9065260ef6830f6372F1Bde408DeC57Fe3150530;
+    address public constant STOX_TEAM_ADDRESS = 0x4eB4Cd1D125d9d281709Ff38d65b99a6927b46c1;
+    address public constant STOX_LTD_ADDRESS = 0xbC14105ccDdeAadB96Ba8dCE18b40C45b6bACf58;
+    address public constant INVEST_ADDRESS = 0xb54c6a870d4aD65e23d471Fb7941aD271D323f5E;
+
     event TokensIssued(address indexed _to, uint256 _tokens);
 
     /// @dev Throws if called when not during sale.
@@ -73,11 +78,11 @@ contract StoxSmartTokenSale is Ownable {
         assert(tokensSold == 0);
         assert(stox.totalSupply() == 0);
 
-        // TODO: add real partner addresses.
-        issueTokens(0xDCa9d05f432e02802542A1AA7d427cB726d01447, 1 * 10 ** 6 * 10 ** 18);
-        issueTokens(0x0010230123012010312300102301230120103122, 1 * 10 ** 6 * 10 ** 18);
-        issueTokens(0x0010230123012010312300102301230120103123, 2 * 10 ** 6 * 10 ** 18);
-        issueTokens(0x0010230123012010312300102301230120103125, 1 * 10 ** 6 * 10 ** 18);
+        // Distribute strategic tokens to partners. Please note, that this address doesn't represent a single entity or
+        // person and will be only used to distribute tokens to 30~ partners.
+        //
+        // Please expect to see token transfers from this address in the first 24 hours after the token sale ends.
+        issueTokens(STRATEGIC_PARTNERS_AGGREGATED_PRESALE_ADDRESS, 14800000 * 10 ** 18);
 
         isDistributed = true;
     }
@@ -102,18 +107,16 @@ contract StoxSmartTokenSale is Ownable {
 
         // Note: we will substract the bonus tokens from this grant, since they were already issued for the pre-sale
         // strategic partners and should've been taken from this allocation.
-        stox.issue(0x0010230123012010312300102301230120103129, strategicPartnershipTokens);
+        stox.issue(STOX_LTD_ADDRESS, strategicPartnershipTokens);
 
         // Issue the remaining tokens as vesting grants:
         stox.issue(trustee, unsoldTokens.sub(strategicPartnershipTokens));
 
         // 25% of the remaining tokens (== 12.5%) go to Invest.com, at uniform 12 months vesting schedule.
-        trustee.grant(0x0010230123012010312300102301230120103121, unsoldTokens.mul(25).div(100), now, now,
-            now.add(1 years), true);
+        trustee.grant(INVEST_ADDRESS, unsoldTokens.mul(25).div(100), now, now, now.add(1 years), true);
 
         // 20% of the remaining tokens (== 10%) go to Stox team, at uniform 24 months vesting schedule.
-        trustee.grant(0x0010230123012010312300102301230120103122, unsoldTokens.mul(20).div(100), now, now,
-            now.add(2 years), true);
+        trustee.grant(STOX_TEAM_ADDRESS, unsoldTokens.mul(20).div(100), now, now, now.add(2 years), true);
 
         // Re-enable transfers after the token sale.
         stox.disableTransfers(false);
