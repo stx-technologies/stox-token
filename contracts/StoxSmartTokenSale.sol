@@ -9,6 +9,8 @@ import './Trustee.sol';
 contract StoxSmartTokenSale is Ownable {
     using SaferMath for uint256;
 
+    uint256 public constant DURATION = 14 days;
+
     bool public isFinalized = false;
     bool public isDistributed = false;
 
@@ -18,8 +20,8 @@ contract StoxSmartTokenSale is Ownable {
     // The address of the token allocation trustee;
     Trustee public trustee;
 
-    uint256 public startBlock;
-    uint256 public endBlock;
+    uint256 public startTime = 0;
+    uint256 public endTime = 0;
     address public fundingRecipient;
 
     uint256 public tokensSold = 0;
@@ -38,7 +40,7 @@ contract StoxSmartTokenSale is Ownable {
 
     /// @dev Throws if called when not during sale.
     modifier onlyDuringSale() {
-        if (tokensSold >= TOKEN_SALE_CAP || block.number < startBlock || block.number >= endBlock) {
+        if (tokensSold >= TOKEN_SALE_CAP || now < startTime || now >= endTime) {
             throw;
         }
 
@@ -47,7 +49,7 @@ contract StoxSmartTokenSale is Ownable {
 
     /// @dev Throws if called before sale ends.
     modifier onlyAfterSale() {
-        if (!(tokensSold >= TOKEN_SALE_CAP || block.number >= endBlock)) {
+        if (!(tokensSold >= TOKEN_SALE_CAP || now >= endTime)) {
             throw;
         }
 
@@ -56,19 +58,17 @@ contract StoxSmartTokenSale is Ownable {
 
     /// @dev Constructor that initializes the sale conditions.
     /// @param _fundingRecipient address The address of the funding recipient.
-    /// @param _startBlock uint256 The block that the token sale should start at.
-    /// @param _endBlock uint256 The block that the token sale should end at.
-    function StoxSmartTokenSale(address _stox, address _fundingRecipient, uint256 _startBlock, uint256 _endBlock) {
+    /// @param _startTime uint256 The start time of the token sale.
+    function StoxSmartTokenSale(address _stox, address _fundingRecipient, uint256 _startTime) {
         require(_stox != address(0));
         require(_fundingRecipient != address(0));
-        require(_startBlock > block.number);
-        require(_endBlock > _startBlock);
+        require(_startTime > now);
 
         stox = StoxSmartToken(_stox);
 
         fundingRecipient = _fundingRecipient;
-        startBlock = _startBlock;
-        endBlock = _endBlock;
+        startTime = _startTime;
+        endTime = startTime + DURATION;
     }
 
     /// @dev Distributed tokens to the partners who have participated during the pre-sale.

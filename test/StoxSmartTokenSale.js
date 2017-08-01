@@ -1,7 +1,6 @@
 import BigNumber from 'bignumber.js';
 import expectThrow from './helpers/expectThrow';
 import time from './helpers/time';
-import assertHelper from './helpers/assert';
 
 const StoxSmartToken = artifacts.require('../contracts/StoxSmartToken.sol');
 const StoxSmartTokenSaleMock = artifacts.require('./helpers/StoxSmartTokenSaleMock.sol');
@@ -34,78 +33,59 @@ contract('StoxSmartTokenSale', (accounts) => {
     // $30M worth of STX.
     const TOKEN_SALE_CAP = new BigNumber(ETH_CAP).mul(EXCHANGE_RATE).mul(STX);
 
-    let waitUntilBlockNumber = async (blockNumber) => {
-        console.log(`Mining until block: ${blockNumber}. Please wait for a couple of moments...`);
-        while (web3.eth.blockNumber < blockNumber) {
-            await time.mine();
-        }
-    };
-
     let setupTokenSale = async (token, sale) => {
         await token.transferOwnership(sale.address);
         await sale.acceptSmartTokenOwnership();
     };
 
-    let blockNumber;
     let now;
+
+    let increaseTime = async (by) => {
+        await time.increaseTime(by);
+        now = web3.eth.getBlock(web3.eth.blockNumber).timestamp;
+    };
 
     let fundRecipient = accounts[8];
     let token;
 
     beforeEach(async () => {
-        blockNumber = web3.eth.blockNumber;
-        now = web3.eth.getBlock(blockNumber).timestamp;
+        now = web3.eth.getBlock(web3.eth.blockNumber).timestamp;
 
         token = await StoxSmartToken.new();
     });
 
     describe('construction', async () => {
         it('should be initialized with a valid token address', async () => {
-            await expectThrow(StoxSmartTokenSaleMock.new(null, fundRecipient, blockNumber + 100, blockNumber + 200));
+            await expectThrow(StoxSmartTokenSaleMock.new(null, fundRecipient, now + 100));
         });
 
         it('should be initialized with a valid funding recipient address', async () => {
-            await expectThrow(StoxSmartTokenSaleMock.new(token.address, null, blockNumber + 100, blockNumber + 200));
+            await expectThrow(StoxSmartTokenSaleMock.new(token.address, null, now + 100));
         });
 
-        it('should be initialized with a future starting block', async () => {
-            await expectThrow(StoxSmartTokenSaleMock.new(token.address, fundRecipient, blockNumber - 1,
-                blockNumber + 200));
-        });
-
-        it('should be initialized with a valid ending block', async () => {
-            await expectThrow(StoxSmartTokenSaleMock.new(token.address, fundRecipient, blockNumber + 100,
-                blockNumber - 1));
-        });
-
-        it('should be initialized with a valid ending block', async () => {
-            await expectThrow(StoxSmartTokenSaleMock.new(token.address, fundRecipient, blockNumber + 100,
-                blockNumber - 1));
+        it('should be initialized with a future starting time', async () => {
+            await expectThrow(StoxSmartTokenSaleMock.new(token.address, fundRecipient, now - 1));
         });
 
         it('should be initialized as not finalized', async () => {
-            let sale = await StoxSmartTokenSaleMock.new(token.address, fundRecipient, blockNumber + 100,
-                blockNumber + 1000);
+            let sale = await StoxSmartTokenSaleMock.new(token.address, fundRecipient, now + 100);
             assert.equal(await sale.isFinalized(), false);
         });
 
         it('should be initialized as not distributed', async () => {
-            let sale = await StoxSmartTokenSaleMock.new(token.address, fundRecipient, blockNumber + 100,
-                blockNumber + 1000);
+            let sale = await StoxSmartTokenSaleMock.new(token.address, fundRecipient, now + 100);
             assert.equal(await sale.isDistributed(), false);
         });
 
         it('should be initialized without a trustee', async () => {
-            let sale = await StoxSmartTokenSaleMock.new(token.address, fundRecipient, blockNumber + 100,
-                blockNumber + 1000);
+            let sale = await StoxSmartTokenSaleMock.new(token.address, fundRecipient, now + 100);
             await setupTokenSale(token, sale);
 
             assert.equal(await sale.trustee(), 0);
         });
 
         it('should be ownable', async () => {
-            let sale = await StoxSmartTokenSaleMock.new(token.address, fundRecipient, blockNumber + 100,
-                blockNumber + 100000);
+            let sale = await StoxSmartTokenSaleMock.new(token.address, fundRecipient, now + 100);
             await setupTokenSale(token, sale);
 
             assert.equal(await sale.owner(), accounts[0]);
@@ -115,8 +95,7 @@ contract('StoxSmartTokenSale', (accounts) => {
             let sale;
 
             beforeEach(async () => {
-                sale = await StoxSmartTokenSaleMock.new(token.address, fundRecipient, blockNumber + 100,
-                    blockNumber + 1000);
+                sale = await StoxSmartTokenSaleMock.new(token.address, fundRecipient, now + 100);
                 await setupTokenSale(token, sale);
 
                 assert.equal(token.address, await sale.stox());
@@ -136,8 +115,7 @@ contract('StoxSmartTokenSale', (accounts) => {
         let sale;
 
         beforeEach(async () => {
-            sale = await StoxSmartTokenSaleMock.new(token.address, fundRecipient, blockNumber + 100,
-                blockNumber + 1000);
+            sale = await StoxSmartTokenSaleMock.new(token.address, fundRecipient, now + 100);
         });
 
         context('with set up token', async() => {
@@ -181,21 +159,20 @@ contract('StoxSmartTokenSale', (accounts) => {
     describe('finalize', async () => {
         let sale;
         let start;
-        let startFrom = 10;
+        let startFrom = 1000;
         let end;
-        let endTo = 20;
 
         beforeEach(async () => {
-            start = blockNumber + startFrom;
-            end = blockNumber + endTo;
-            sale = await StoxSmartTokenSaleMock.new(token.address, fundRecipient, start, end);
+            start = now + startFrom;
+            end = start + 14 * DAY;
+            sale = await StoxSmartTokenSaleMock.new(token.address, fundRecipient, start);
             await setupTokenSale(token, sale);
             await sale.distributePartnerTokens();
         });
 
         context('before the ending time', async() => {
             beforeEach(async () => {
-                assert(blockNumber < end);
+                assert(now < end);
             });
 
             it('should throw', async () => {
@@ -264,9 +241,8 @@ contract('StoxSmartTokenSale', (accounts) => {
 
                         assert.equal(tokenGrant.value, granted.toNumber());
 
-                        assertHelper.around(tokenGrant.start, now, MAX_TIME_ERROR);
-                        assertHelper.around(tokenGrant.cliff, now, MAX_TIME_ERROR);
-                        assertHelper.around(tokenGrant.end, now + grant.vesting, MAX_TIME_ERROR);
+                        assert.equal(tokenGrant.cliff, tokenGrant.start);
+                        assert.equal(tokenGrant.end, tokenGrant.start + grant.vesting);
                         assert.equal(tokenGrant.transferred, 0);
                         assert.equal(tokenGrant.revokable, true);
                     });
@@ -302,8 +278,7 @@ contract('StoxSmartTokenSale', (accounts) => {
 
         context('after the ending time', async() => {
             beforeEach(async () => {
-                await waitUntilBlockNumber(end + 1);
-                assert(web3.eth.blockNumber > end);
+                await increaseTime(YEAR);
             });
 
             context('sold all of the tokens', async() => {
@@ -388,23 +363,19 @@ contract('StoxSmartTokenSale', (accounts) => {
         describe(name, async () => {
             let sale;
             let start;
-            let startFrom = 10;
-            let end;
-            let endTo = 30;
+            let startFrom = 1000;
             let value = 1000;
 
             beforeEach(async () => {
-                start = blockNumber + startFrom;
-                end = blockNumber + endTo;
-                sale = await StoxSmartTokenSaleMock.new(token.address, fundRecipient, start, end);
+                start = now + startFrom;
+                sale = await StoxSmartTokenSaleMock.new(token.address, fundRecipient, start);
                 await setupTokenSale(token, sale);
                 await sale.distributePartnerTokens();
             });
 
             context('after the ending time', async() => {
                 beforeEach(async () => {
-                    await waitUntilBlockNumber(end + 1);
-                    assert(web3.eth.blockNumber > end);
+                    await increaseTime(YEAR);
                 });
 
                 it('should throw if called after the end fo the sale', async () => {
@@ -437,7 +408,7 @@ contract('StoxSmartTokenSale', (accounts) => {
 
             context('before the start of the sale', async() => {
                 beforeEach(async () => {
-                    assert(blockNumber < start);
+                    assert(now < start);
                 });
 
                 it('should throw if called before the start fo the sale', async () => {
@@ -448,8 +419,7 @@ contract('StoxSmartTokenSale', (accounts) => {
             context('during the token sale', async () => {
                 // Please note that we'd only have (end - start) blocks to run the tests below.
                 beforeEach(async () => {
-                    await waitUntilBlockNumber(start);
-                    assert(web3.eth.blockNumber >= start);
+                    await increaseTime(start - now + 1);
                 });
 
                 it('should throw if called with 0 ETH', async () => {
@@ -536,14 +506,11 @@ contract('StoxSmartTokenSale', (accounts) => {
         let sale;
         let trustee;
         let start;
-        let startFrom = 10;
-        let end;
-        let endTo = 20;
+        let startFrom = 1000;
 
         beforeEach(async () => {
-            start = blockNumber + startFrom;
-            end = blockNumber + endTo;
-            sale = await StoxSmartTokenSaleMock.new(token.address, fundRecipient, start, end);
+            start = now + startFrom;
+            sale = await StoxSmartTokenSaleMock.new(token.address, fundRecipient, start);
             await setupTokenSale(token, sale);
             await sale.distributePartnerTokens();
         });
@@ -641,7 +608,7 @@ contract('StoxSmartTokenSale', (accounts) => {
 
         context('during the sale', async () => {
             beforeEach(async () => {
-                await waitUntilBlockNumber(start);
+                await increaseTime(start - now + 1);
             });
 
             testTransferAndAcceptTokenOwnership();
@@ -662,7 +629,7 @@ contract('StoxSmartTokenSale', (accounts) => {
 
             context('after the ending time', async() => {
                 beforeEach(async () => {
-                    await waitUntilBlockNumber(end + 1);
+                    await increaseTime(YEAR);
                     await sale.finalize();
 
                     trustee = Trustee.at(await sale.trustee());
