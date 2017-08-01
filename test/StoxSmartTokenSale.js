@@ -17,7 +17,7 @@ contract('StoxSmartTokenSale', (accounts) => {
     const STX = Math.pow(10, 18);
     const DEFAULT_GAS_PRICE = 100000000000;
 
-    const ETH_PRICE_USD = 227;
+    const ETH_CAP = 148000;
     const EXCHANGE_RATE = 200; // 200 STX for ETH
 
     const PARTNER_TOKENS = new BigNumber(5 * Math.pow(10, 6)).mul(STX); // TODO: use real amount.
@@ -38,8 +38,7 @@ contract('StoxSmartTokenSale', (accounts) => {
     let STRATEGIC_PARTNERSHIP_GRANT = {address: '0x0010230123012010312300102301230120103129', percent: 55};
 
     // $30M worth of STX.
-    const TOKEN_SALE_CAP = new BigNumber(30 * Math.pow(10, 6)).div(ETH_PRICE_USD).floor().mul(EXCHANGE_RATE).
-        mul(STX).minus(PARTNER_TOKENS);
+    const TOKEN_SALE_CAP = new BigNumber(ETH_CAP).mul(EXCHANGE_RATE).mul(STX).minus(PARTNER_TOKENS);
 
     let waitUntilBlockNumber = async (blockNumber) => {
         console.log(`Mining until block: ${blockNumber}. Please wait for a couple of moments...`);
